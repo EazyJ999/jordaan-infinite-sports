@@ -1,0 +1,50 @@
+export type PoloSeed = {
+  slug: string;
+  name: string;
+  team: string;
+  blurb: string;
+};
+
+export const POLO_SEEDS: PoloSeed[] = [
+  { slug: "arsenal-orange", name: "Arsenal polo, orange", team: "Arsenal", blurb: "Orange Arsenal polo." },
+  { slug: "argentina-white", name: "Argentina polo, white", team: "Argentina", blurb: "White Argentina polo." },
+  { slug: "argentina-navy", name: "Argentina polo, navy", team: "Argentina", blurb: "Navy Argentina polo." },
+  { slug: "villarreal-yellow", name: "Villarreal polo, yellow", team: "Villarreal", blurb: "Yellow Villarreal polo." },
+  { slug: "rayo-vallecano", name: "Rayo Vallecano polo", team: "Rayo Vallecano", blurb: "Cream Rayo Vallecano polo with the red sash." },
+  { slug: "lyon-navy", name: "Lyon polo, navy", team: "Olympique Lyonnais", blurb: "Navy Lyon polo." },
+  { slug: "nottingham-forest", name: "Nottingham Forest polo, blue", team: "Nottingham Forest", blurb: "Blue Nottingham Forest polo." },
+  { slug: "newcastle-black", name: "Newcastle United polo, black", team: "Newcastle United", blurb: "Black Newcastle United polo." },
+  { slug: "valencia-black", name: "Valencia polo, black", team: "Valencia", blurb: "Black Valencia polo." },
+  { slug: "manchester-united-black", name: "Manchester United polo, black", team: "Manchester United", blurb: "Black Manchester United polo." },
+  { slug: "manchester-united-red", name: "Manchester United polo, red", team: "Manchester United", blurb: "Red Manchester United polo." },
+  { slug: "liverpool-white", name: "Liverpool polo, white", team: "Liverpool", blurb: "White Liverpool polo." },
+  { slug: "liverpool-black", name: "Liverpool polo, black", team: "Liverpool", blurb: "Black Liverpool polo." },
+  { slug: "leeds-blue", name: "Leeds United polo, black and blue", team: "Leeds United", blurb: "Black Leeds United polo with blue sleeves." },
+  { slug: "leeds-silver", name: "Leeds United polo, black and silver", team: "Leeds United", blurb: "Black Leeds United polo with silver sleeves." },
+  { slug: "fenerbahce-navy", name: "Fenerbahce polo, navy", team: "Fenerbahce", blurb: "Navy Fenerbahce polo." },
+  { slug: "fenerbahce-white", name: "Fenerbahce polo, white", team: "Fenerbahce", blurb: "White Fenerbahce polo." },
+  { slug: "colombia-white", name: "Colombia polo, white", team: "Colombia", blurb: "White Colombia polo." },
+  { slug: "colombia-navy", name: "Colombia polo, navy", team: "Colombia", blurb: "Navy Colombia polo." },
+  { slug: "celtic-black", name: "Celtic polo, black", team: "Celtic", blurb: "Black Celtic polo." },
+  { slug: "celtic-green", name: "Celtic polo, green", team: "Celtic", blurb: "Green Celtic polo." },
+  { slug: "boca-white", name: "Boca Juniors polo, white", team: "Boca Juniors", blurb: "White Boca Juniors polo." },
+  { slug: "boca-navy", name: "Boca Juniors polo, navy", team: "Boca Juniors", blurb: "Navy Boca Juniors polo." },
+  { slug: "benfica-white", name: "Benfica polo, white", team: "Benfica", blurb: "White Benfica polo." },
+  { slug: "benfica-red", name: "Benfica polo, red", team: "Benfica", blurb: "Red Benfica polo." },
+  { slug: "bayern-cream", name: "Bayern Munich polo, cream", team: "Bayern Munich", blurb: "Cream Bayern Munich polo." },
+  { slug: "aston-villa-grey", name: "Aston Villa polo, grey", team: "Aston Villa", blurb: "Grey Aston Villa polo." },
+  { slug: "aston-villa-dark", name: "Aston Villa polo, dark", team: "Aston Villa", blurb: "Dark Aston Villa polo." },
+  { slug: "ajax-navy", name: "Ajax polo, navy", team: "Ajax", blurb: "Navy Ajax polo." },
+  { slug: "ajax-white", name: "Ajax polo, white", team: "Ajax", blurb: "White Ajax polo." },
+  { slug: "spain-navy", name: "Spain polo, navy", team: "Spain", blurb: "Navy Spain polo." },
+  { slug: "spain-sky", name: "Spain polo, sky blue", team: "Spain", blurb: "Sky blue Spain polo." },
+  { slug: "spain-red", name: "Spain polo, red", team: "Spain", blurb: "Red Spain polo." },
+  { slug: "sevilla-white", name: "Sevilla polo, white", team: "Sevilla", blurb: "White Sevilla polo." },
+  { slug: "sevilla-black", name: "Sevilla polo, black", team: "Sevilla", blurb: "Black Sevilla polo." },
+  { slug: "sevilla-burgundy", name: "Sevilla polo, burgundy", team: "Sevilla", blurb: "Burgundy Sevilla polo." },
+  { slug: "river-white", name: "River Plate polo, white", team: "River Plate", blurb: "White River Plate polo." },
+  { slug: "river-red", name: "River Plate polo, red", team: "River Plate", blurb: "Red River Plate polo." },
+  { slug: "real-madrid-green", name: "Real Madrid polo, green", team: "Real Madrid", blurb: "Green Real Madrid polo." },
+  { slug: "real-madrid-cream", name: "Real Madrid polo, cream", team: "Real Madrid", blurb: "Cream Real Madrid polo." },
+  { slug: "real-madrid-white", name: "Real Madrid polo, white", team: "Real Madrid", blurb: "White Real Madrid polo." },
+];
