@@ -7,7 +7,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <Link to="/product/$slug" params={{ slug: product.slug }} className="block">
-      <div className="frame-kit overflow-hidden bg-paper">
+      <div className="frame-kit overflow-hidden bg-[#0e0e0e]">
         <img
           src={product.image}
           alt={product.name}

@@ -1,24 +1,31 @@
 import { useEffect, useState } from "react";
-import { SCORE_HIGHLIGHTS } from "@/data/weekend";
-import { listSportNews } from "@/lib/community.functions";
+import { listDailyBoard, listSportNews } from "@/lib/community.functions";
+
+const HALF_HOUR = 30 * 60 * 1000;
 
 export function ScoreTicker() {
-  const [lines, setLines] = useState<string[]>(SCORE_HIGHLIGHTS);
+  const [lines, setLines] = useState<string[]>(["Sport news and results refresh through the day"]);
 
   useEffect(() => {
     let live = true;
-    listSportNews()
-      .then((result) => {
-        if (!live) return;
-        const headlines = result.items.slice(0, 8).map((item) => `${item.source} · ${item.title}`);
-        const next = [...SCORE_HIGHLIGHTS, ...headlines];
-        if (next.length > 0) setLines(next);
-      })
-      .catch(() => {
-        /* keep the score highlights */
-      });
+
+    async function load() {
+      const [news, board] = await Promise.all([
+        listSportNews().catch(() => null),
+        listDailyBoard().catch(() => null),
+      ]);
+      if (!live) return;
+      const results = board?.results.slice(0, 8) ?? [];
+      const headlines = news?.items.slice(0, 8).map((item) => `${item.source} · ${item.title}`) ?? [];
+      const next = [...results, ...headlines];
+      if (next.length > 0) setLines(next);
+    }
+
+    void load();
+    const timer = window.setInterval(() => void load(), HALF_HOUR);
     return () => {
       live = false;
+      window.clearInterval(timer);
     };
   }, []);
 

@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CATEGORIES, F1_PRICE, RED_BULL_JACKET, TO_ORDER_NOTE, formatMoney, shopQuery } from "@/data/catalog";
-import { BrandStage } from "@/components/brand-stage";
 import { CategoryArt } from "@/components/category-art";
 import { JacketReel } from "@/components/jacket-reel";
 import { ProductCard } from "@/components/product-card";
+import { dailyShelfPhoto, ShelfShow } from "@/components/shelf-show";
 import { useCatalog } from "@/lib/catalog-context";
 import { WHATSAPP_NUMBER } from "@/lib/whatsapp-order";
 
@@ -16,6 +16,11 @@ function Home() {
   const onHand = products.filter((product) => product.availability === "on_hand" && product.slug !== RED_BULL_JACKET);
   const toOrder = products.filter((product) => product.availability === "to_order" && product.slug !== RED_BULL_JACKET);
   const arrivals = products.filter((product) => product.category === "new");
+
+  function shelfImages(categoryId: string) {
+    const photo = dailyShelfPhoto(products, categoryId);
+    return photo ? [photo] : [];
+  }
 
   return (
     <main>
@@ -48,7 +53,7 @@ function Home() {
           </div>
         </div>
         <div className="lg:col-span-7">
-          <BrandStage />
+          <ShelfShow products={products} />
         </div>
       </section>
 
@@ -56,17 +61,17 @@ function Home() {
         <Link to="/news" className="bg-paper px-3 py-2.5">
           <p className="text-[11px] text-brass">Open to everyone</p>
           <h2 className="mt-0.5 text-sm">Daily news</h2>
-          <p className="mt-1 text-xs leading-snug text-muted">Headlines, refreshed every hour.</p>
+          <p className="mt-1 text-xs leading-snug text-muted">Headlines and results, refreshed through the day.</p>
         </Link>
         <Link to="/tips" className="bg-paper px-3 py-2.5">
           <p className="text-[11px] text-brass">Registered · 18+</p>
-          <h2 className="mt-0.5 text-sm">Weekend tips</h2>
-          <p className="mt-1 text-xs leading-snug text-muted">Rugby, NFL and football. Opinions only.</p>
+          <h2 className="mt-0.5 text-sm">Daily tips</h2>
+          <p className="mt-1 text-xs leading-snug text-muted">Today’s football, rugby and NFL. Results when full time.</p>
         </Link>
         <Link to="/score" className="bg-paper px-3 py-2.5">
           <p className="text-[11px] text-brass">R100 · 18+</p>
           <h2 className="mt-0.5 text-sm">Correct score</h2>
-          <p className="mt-1 text-xs leading-snug text-muted">7 scores. Extra entries, extra chances.</p>
+          <p className="mt-1 text-xs leading-snug text-muted">First week and last week of every month.</p>
         </Link>
       </section>
 
@@ -132,10 +137,8 @@ function Home() {
                 search={shopQuery(category.id)}
                 className="flex flex-col overflow-hidden bg-paper"
               >
-                <span
-                  className={`block h-20 w-full overflow-hidden sm:h-24 ${category.images.length > 1 ? "bg-bone" : "bg-white"}`}
-                >
-                  <CategoryArt images={category.images} label={category.label} />
+                <span className="block h-20 w-full overflow-hidden bg-[#0e0e0e] sm:h-24">
+                  <CategoryArt images={shelfImages(category.id)} label={category.label} />
                 </span>
                 <span className="px-2 py-2">
                   <span className="block text-sm leading-tight">{category.label}</span>

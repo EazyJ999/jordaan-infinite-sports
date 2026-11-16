@@ -14,7 +14,7 @@ export function JacketReel() {
 
   return (
     <div>
-      <div className="relative aspect-[4/5] max-h-96 overflow-hidden bg-bone">
+      <div className="relative aspect-[4/5] max-h-96 overflow-hidden bg-[#0e0e0e]">
         {RED_BULL_SHOTS.map((shot, shotIndex) => (
           <img
             key={shot.src}
