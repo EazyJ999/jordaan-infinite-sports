@@ -162,10 +162,17 @@ async function createPgliteSql(): Promise<Sql> {
   globalRef.__pgliteMigrateChain__ = pass;
   await pass;
 
-  return toSql(async <T>(text: string, params: unknown[]) => {
+  const sql = toSql(async <T>(text: string, params: unknown[]) => {
     const result = await pg.query<T>(text, params);
     return result.rows;
   });
+  try {
+    const { pullAccounts } = await import("@/lib/shared-accounts");
+    await pullAccounts(sql);
+  } catch (err) {
+    console.error("[db] account restore failed", err);
+  }
+  return sql;
 }
 
 let sqlPromise: Promise<Sql> | null = null;

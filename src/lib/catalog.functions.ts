@@ -4,6 +4,7 @@ import { products as seedProducts, coarseSport, isCategory, normalizeSeason, typ
 import type { Sql } from "@/lib/db";
 import { correctListing } from "@/data/kit-facts";
 import { pullSharedCatalog, pushSharedCatalog } from "@/lib/shared-catalog";
+import { pushAccounts } from "@/lib/shared-accounts";
 import { chartAllowsPrint, chartForCategory, isSizeChart, sizesFor, type SizeChartId } from "@/data/size-charts";
 
 export type AdminProduct = Product & { hidden: boolean };
@@ -458,6 +459,7 @@ export const loadDesk = createServerFn({ method: "GET" })
     }
     if (!owner) return { state: "unclaimed" as const, products: [] as AdminProduct[] };
     if (owner !== context.userId) return { state: "taken" as const, products: [] as AdminProduct[] };
+    await pushAccounts(sql);
     await enforcePrices(sql);
     await pullSharedCatalog(sql);
     const rows = await sql<Row>`

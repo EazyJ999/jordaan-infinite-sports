@@ -28,10 +28,12 @@ export function CatalogProvider({
 }) {
   const [products, setProducts] = useState(initial);
   const versionRef = useRef(version);
+  const productsRef = useRef(initial);
 
   useEffect(() => {
     if (version === versionRef.current) return;
     versionRef.current = version;
+    productsRef.current = initial;
     setProducts(initial);
   }, [initial, version]);
 
@@ -43,7 +45,14 @@ export function CatalogProvider({
         if (stop || next === versionRef.current) return;
         const data = await listPublicProducts();
         if (stop) return;
+        const kept = productsRef.current;
+        const reverted = data.products.some((item) => {
+          const previous = kept.find((product) => product.slug === item.slug);
+          return previous != null && previous.price !== item.price && item.price === 800 && previous.price !== 800;
+        });
+        if (data.version === "seed" || reverted) return;
         versionRef.current = data.version;
+        productsRef.current = data.products;
         setProducts(data.products);
       } catch {
         // Keep the rail that's already on screen.
