@@ -167,6 +167,7 @@ function Rail({
   more: string;
   empty?: string;
 }) {
+  if (products.length === 0 && !empty) return null;
   return (
     <section className="mx-auto max-w-6xl px-4 py-12">
       <div className="mb-6 flex items-end justify-between gap-4">
