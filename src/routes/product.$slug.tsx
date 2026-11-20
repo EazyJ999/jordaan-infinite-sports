@@ -29,6 +29,16 @@ function ProductPage() {
     setPhoto(0);
   }, [product?.slug]);
 
+  useEffect(() => {
+    const count = product?.gallery?.length ? product.gallery.length + 1 : product?.image ? 1 : 0;
+    if (!product || count < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => {
+      setPhoto((current) => (current + 1) % count);
+    }, 2800);
+    return () => window.clearInterval(timer);
+  }, [product?.slug, product?.gallery?.length, product?.image]);
+
   if (!product) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-16">

@@ -19,6 +19,13 @@ export function SiteFooter() {
           <p className="mt-3 text-sm text-muted">
             Customised items cannot be refunded or returned. A 2–4 cm fit difference is normal.
           </p>
+          <p className="mt-3 text-sm text-muted">
+            If you do not see anything you like, you are more than welcome to{" "}
+            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} className="underline">
+              send a picture
+            </a>{" "}
+            of the item you would like to have.
+          </p>
         </div>
         <div>
           <p className="text-xs uppercase tracking-widest text-brass">Shelves</p>
