@@ -33,7 +33,7 @@ function seasonFrom(text: string) {
   const four = text.match(/\b(19|20)(\d{2})\b/);
   if (four) {
     const year = Number(`${four[1]}${four[2]}`);
-    if (year >= 1970 && year <= 2030) return seasonCode(year);
+    if (year >= 1900 && year <= 2030) return seasonCode(year);
   }
   const pair = text.match(/\b(\d{2})\s*[/-]\s*(\d{2})\b/);
   if (!pair) return "";
@@ -46,15 +46,30 @@ function guessCategory(path: string): Category {
   if (/polo/.test(text)) return "polos";
   if (/formula|\bf1\b|racing jacket/.test(text)) return "f1";
   if (/\bnfl\b/.test(text)) return "nfl";
-  if (/\bmlb\b|baseball/.test(text)) return "mlb";
+  if (/\bmlb\b|baseball|dodgers|yankees|barons/.test(text)) return "mlb";
   if (/rugby|all blacks|springbok/.test(text)) return "rugby";
-  if (/tracksuit|hoodie/.test(text)) return "tracksuits";
-  if (/jacket|windbreaker|beanie/.test(text)) return "retro-jackets";
+  if (/full tracksuit|track suit|full kit/.test(text)) return "full-tracksuit";
+  if (/hoodie/.test(text)) return "hoodies";
+  if (/puffer/.test(text)) return "puffer";
+  if (/windbreaker|double sided/.test(text)) return "windbreaker";
+  if (/long sleeve/.test(text)) return "long-sleeves";
+  if (/beanie/.test(text)) return "beanies";
+  if (/banner/.test(text)) return "banners";
+  if (/glove/.test(text)) return "gloves";
+  if (/keychain|key ring/.test(text)) return "keychains";
+  if (/scarf/.test(text)) return "scarfs";
+  if (/flag/.test(text)) return "match-flag";
+  if (/shin/.test(text)) return "shin-pads";
+  if (/football|soccer ball/.test(text)) return "footballs";
+  if (/sock/.test(text)) return "socks";
+  if (/tracksuit/.test(text)) return "tracksuits";
+  if (/jacket/.test(text)) return "retro-jackets";
   if (/baby|babies|infant/.test(text)) return "babies";
   if (/boot/.test(text)) return "boots";
-  if (/retro/.test(text)) return "retro";
-  if (/chiefs|pirates|sundowns|kaizer|local/.test(text)) return "local";
-  return "new";
+  if (/international retro|nation retro/.test(text)) return "intl-retro";
+  if (/retro/.test(text)) return "clubs-retro";
+  if (/chiefs|pirates|sundowns|kaizer|bafana|springbok|local/.test(text)) return "local";
+  return "leagues";
 }
 
 function rankFile(file: File) {
@@ -98,10 +113,11 @@ export function PhotoDrop({
 }) {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [skipped, setSkipped] = useState("");
-  const [category, setCategory] = useState<Category>("new");
+  const [category, setCategory] = useState<Category>("leagues");
   const [availability, setAvailability] = useState<Availability>("to_order");
   const [season, setSeason] = useState("");
-  const [price, setPrice] = useState(String(listPrice("new") ?? 800));
+  const [price, setPrice] = useState(String(listPrice("leagues") ?? 800));
+  const [priceEdited, setPriceEdited] = useState(false);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
@@ -112,9 +128,11 @@ export function PhotoDrop({
     const grouped = groupFiles(files);
     const kept = grouped.slice(0, 40);
     const guess = guessCategory(files.map((file) => file.webkitRelativePath || file.name).join(" "));
-    const listed = listPrice(guess);
+    if (!priceEdited) {
+      const listed = listPrice(guess);
+      if (listed != null) setPrice(String(listed));
+    }
     setCategory(guess);
-    setPrice(listed == null ? price : String(listed));
     const shared = kept.find((batch) => batch.season)?.season ?? "";
     if (shared && kept.every((batch) => !batch.season || batch.season === shared)) setSeason(shared);
     setBatches(kept);
@@ -233,9 +251,11 @@ export function PhotoDrop({
               value={category}
               onChange={(event) => {
                 const next = event.target.value as Category;
-                const listed = listPrice(next);
                 setCategory(next);
-                if (listed != null) setPrice(String(listed));
+                if (!priceEdited) {
+                  const listed = listPrice(next);
+                  if (listed != null) setPrice(String(listed));
+                }
               }}
             >
               {CATEGORIES.map((item) => (
@@ -254,7 +274,15 @@ export function PhotoDrop({
           </label>
           <label className="text-sm">
             Price (R)
-            <input className="field mt-1" inputMode="numeric" value={price} onChange={(event) => setPrice(event.target.value.replace(/[^\d]/g, ""))} />
+            <input
+              className="field mt-1"
+              inputMode="numeric"
+              value={price}
+              onChange={(event) => {
+                setPriceEdited(true);
+                setPrice(event.target.value.replace(/[^\d]/g, ""));
+              }}
+            />
           </label>
           <label className="text-sm">
             Shirt year, if they share one

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CATEGORIES, F1_PRICE, RED_BULL_JACKET, TO_ORDER_NOTE, formatMoney, shopQuery } from "@/data/catalog";
+import { F1_PRICE, RED_BULL_JACKET, TO_ORDER_NOTE, formatMoney, shopQuery, stockedCategories } from "@/data/catalog";
 import { CategoryArt } from "@/components/category-art";
 import { JacketReel } from "@/components/jacket-reel";
 import { ProductCard } from "@/components/product-card";
@@ -15,7 +15,7 @@ function Home() {
   const { products } = useCatalog();
   const onHand = products.filter((product) => product.availability === "on_hand" && product.slug !== RED_BULL_JACKET);
   const toOrder = products.filter((product) => product.availability === "to_order" && product.slug !== RED_BULL_JACKET);
-  const arrivals = products.filter((product) => product.category === "new");
+  const shelves = stockedCategories(products);
 
   function shelfImages(categoryId: string) {
     const photo = dailyShelfPhoto(products, categoryId);
@@ -105,30 +105,13 @@ function Home() {
         more="All to order"
       />
 
-      <section className="mx-auto max-w-6xl px-4 pb-4">
-        <div className="bg-paper px-5 py-6">
-          <p className="text-xs text-brass">Just in</p>
-          <h2 className="mt-2 font-display text-4xl">New arrivals</h2>
-          {arrivals.length > 0 ? (
-            <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-8 lg:grid-cols-4">
-              {arrivals.map((product) => (
-                <ProductCard key={product.slug} product={product} />
-              ))}
-            </div>
-          ) : null}
-          <Link to="/shop" search={shopQuery("new")} className="mt-5 inline-block text-sm underline">
-            Open new arrivals
-          </Link>
-        </div>
-      </section>
-
       <section className="mx-auto max-w-6xl px-4 py-10">
         <h2 className="font-display text-4xl">Browse the shelves</h2>
         <p className="mt-3 max-w-xl text-sm text-muted">
-          Authentic replicas. Leagues and Polo Shirts are the football shelves. Local is Lekker is South African clubs and national teams.
+          Empty shelves stay hidden. Local is Lekker is South African clubs and national teams. League Kits 26/27 is the current football season.
         </p>
         <div className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-          {CATEGORIES.map((category) => {
+          {shelves.map((category) => {
             const count = products.filter((product) => product.category === category.id).length;
             return (
               <Link

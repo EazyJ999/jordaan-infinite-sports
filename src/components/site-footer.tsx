@@ -1,10 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { CATEGORIES, COLLECTION_ADDRESS, COLLECTION_HOURS, shopQuery } from "@/data/catalog";
+import { COLLECTION_ADDRESS, COLLECTION_HOURS, shopQuery, stockedCategories } from "@/data/catalog";
 import { SocialLinks } from "@/components/social-links";
 import { SiteQr } from "@/components/site-qr";
+import { useCatalog } from "@/lib/catalog-context";
 import { WHATSAPP_DISPLAY, WHATSAPP_NUMBER } from "@/lib/whatsapp-order";
 
 export function SiteFooter() {
+  const { products } = useCatalog();
+  const shelves = stockedCategories(products);
   return (
     <footer className="mt-16 border-t border-line bg-paper text-ink">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-3">
@@ -20,7 +23,7 @@ export function SiteFooter() {
         <div>
           <p className="text-xs uppercase tracking-widest text-brass">Shelves</p>
           <ul className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            {CATEGORIES.map((category) => (
+            {shelves.map((category) => (
               <li key={category.id}>
                 <Link to="/shop" search={shopQuery(category.id)} className="hover:text-brass">
                   {category.label}
@@ -63,9 +66,6 @@ export function SiteFooter() {
           </Link>
           <Link to="/orders" className="mt-2 block text-sm underline">
             Orders on this phone
-          </Link>
-          <Link to="/admin" className="mt-2 block text-sm underline">
-            Admin
           </Link>
         </div>
       </div>

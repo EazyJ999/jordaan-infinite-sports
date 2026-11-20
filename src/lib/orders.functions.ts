@@ -263,6 +263,11 @@ export const placeShopOrder = createServerFn({ method: "POST" })
     const row = placed[0];
     if (row?.short) return { ok: false as const, error: `${row.short} just sold out. Lower the quantity.` };
     if (!row?.id) return { ok: false as const, error: "Could not save the order. Try again." };
+    const customerId = typeof raw.customerId === "string" ? raw.customerId.trim() : "";
+    if (customerId.startsWith("CUS-")) {
+      await sql`alter table shop_orders add column if not exists customer_id text not null default ''`;
+      await sql`update shop_orders set customer_id = ${customerId} where id = ${row.id}`;
+    }
     return { ok: true as const, id, subtotal, shipping, total, lines: priced, delivery: delivery as Delivery };
   });
 
@@ -505,3 +510,74 @@ export const setBulkStatus = createServerFn({ method: "POST" })
     await sql`update bulk_enquiries set status = ${status} where id = ${id}`;
     return { ok: true as const };
   });
+
+export const listCustomerOrders = createServerFn({ method: "POST" })
+  .validator((input: unknown) => input)
+  .handler(async ({ data }) => {
+    if (!data || typeof data !== "object") return { ok: false as const, error: "Sign in first.", orders: [] as StoredOrder[] };
+    const id = typeof (data as { customerId?: unknown }).customerId === "string" ? (data as { customerId: string }).customerId.trim() : "";
+    if (!id.startsWith("CUS-")) return { ok: false as const, error: "Sign in first.", orders: [] as StoredOrder[] };
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    await sql`alter table shop_orders add column if not exists customer_id text not null default ''`;
+    const rows = await sql<{
+      id: string;
+      created_at: string;
+      delivery: string;
+      subtotal: number;
+      shipping: number;
+      total: number;
+      lines: OrderLine[] | string;
+      customer_name: string;
+      phone: string;
+      email: string;
+    }>`
+      select id, created_at::text as created_at, delivery, subtotal, shipping, total, lines, customer_name, phone, email
+      from shop_orders
+      where customer_id = ${id}
+      order by created_at desc
+      limit 40
+    `;
+    const orders: StoredOrder[] = rows.map((row) => ({
+      id: row.id,
+      createdAt: row.created_at,
+      lines: typeof row.lines === "string" ? (JSON.parse(row.lines) as OrderLine[]) : row.lines,
+      customer: {
+        name: row.customer_name,
+        email: row.email,
+        phone: row.phone,
+        line1: "",
+        suburb: "",
+        city: "",
+        province: "",
+        postal: "",
+        notes: "",
+        delivery: row.delivery as Delivery,
+      },
+      subtotal: Number(row.subtotal),
+      shipping: Number(row.shipping),
+      total: Number(row.total),
+    }));
+    return { ok: true as const, orders };
+  });
+
+type StoredOrder = {
+  id: string;
+  createdAt: string;
+  lines: OrderLine[];
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+    line1: string;
+    suburb: string;
+    city: string;
+    province: string;
+    postal: string;
+    notes: string;
+    delivery: Delivery;
+  };
+  subtotal: number;
+  shipping: number;
+  total: number;
+};

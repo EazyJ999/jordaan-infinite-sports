@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { RedirectToSignIn, UserButton } from "@/lib/auth/gates";
-import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { useCurrentUserState, type AppUser } from "@/lib/auth/use-current-user";
 import { AVAILABILITY, CATEGORIES, SEASON_YEARS, availabilityLabel, categoryLabel, formatMoney, listPrice, seasonCode, seasonText, type Availability, type Category } from "@/data/catalog";
 import { SIZE_CHARTS, chartAllowsPrint, chartForCategory, sizesFor, type SizeChartId } from "@/data/size-charts";
 import { pingCatalog } from "@/lib/catalog-context";
@@ -10,7 +10,7 @@ import { DeskOps } from "@/components/desk-ops";
 import { PayPalAdmin } from "@/components/paypal-checkout";
 import { PhotoDrop } from "@/components/photo-drop";
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute("/desk")({
   head: () => ({ meta: [{ title: "Admin · J.I.S" }] }),
   component: AdminPage,
 });
@@ -39,7 +39,7 @@ const blank = (): Draft => ({
   slug: "",
   name: "",
   team: "",
-  category: "new",
+  category: "leagues",
   availability: "on_hand",
   price: "",
   fanPrice: "1299",
@@ -79,15 +79,18 @@ function fromProduct(product: AdminProduct): Draft {
 
 function AdminPage() {
   const { user, isPending } = useCurrentUserState();
-  if (isPending) {
+  const kept = useRef<AppUser | null>(null);
+  if (user) kept.current = user;
+  const signedIn = user ?? kept.current;
+  if (!signedIn && isPending) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-16">
         <p className="text-sm uppercase tracking-widest text-muted">Opening admin…</p>
       </main>
     );
   }
-  if (!user) return <RedirectToSignIn to="/login" />;
-  return <Desk name={user.displayName || user.primaryEmail || "Owner"} />;
+  if (!signedIn) return <RedirectToSignIn to="/desk-sign-in" />;
+  return <Desk name={signedIn.displayName || signedIn.primaryEmail || "Owner"} />;
 }
 
 function Desk({ name }: { name: string }) {
@@ -202,8 +205,10 @@ function Desk({ name }: { name: string }) {
       pingCatalog();
       const desk = await refresh();
       const saved = desk.products.find((item) => item.slug === result.product.slug) ?? result.product;
-      setDraft(fromProduct(saved));
-      setMessage("Saved. The shop is already showing this.");
+      const priced = saved.price === result.product.price ? saved : { ...saved, price: result.product.price, fanPrice: result.product.price };
+      setProducts(desk.products.map((item) => (item.slug === priced.slug ? priced : item)));
+      setDraft(fromProduct(priced));
+      setMessage(`Saved at ${formatMoney(priced.price)}. That is the price on the shop.`);
       setConfirmRemove(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save that kit.");
@@ -413,21 +418,16 @@ function Desk({ name }: { name: string }) {
                     onChange={(e) => {
                       const category = e.target.value as Category;
                       const sizeChart = chartForCategory(category);
-                      const nextPrice = listPrice(category);
-                      const prevPrice = listPrice(draft.category);
-                      const prevText = prevPrice == null ? "" : String(prevPrice);
-                      const nextText = nextPrice == null ? "" : String(nextPrice);
-                      setDraft({
-                        ...draft,
+                      setDraft((current) => ({
+                        ...current,
                         category,
-                        ...(draft.slug
+                        ...(current.slug
                           ? {}
                           : {
                               sizeChart,
                               printable: chartAllowsPrint(sizeChart),
-                              price: draft.price === "" || draft.price === prevText ? nextText : draft.price,
                             }),
-                      });
+                      }));
                     }}
                   >
                     {CATEGORIES.map((category) => (
@@ -457,9 +457,16 @@ function Desk({ name }: { name: string }) {
                     className="field mt-1"
                     inputMode="numeric"
                     value={draft.price}
-                    onChange={(e) => setDraft({ ...draft, price: e.target.value.replace(/[^\d]/g, "") })}
+                    onChange={(e) => {
+                      const price = e.target.value.replace(/[^\d]/g, "");
+                      setDraft((current) => ({ ...current, price }));
+                    }}
                     required
                   />
+                  <span className="mt-1 block text-xs text-muted">
+                    This is the price on the shop after you save.
+                    {listPrice(draft.category) == null ? "" : ` The usual price on this shelf is ${formatMoney(listPrice(draft.category) ?? 0)}.`}
+                  </span>
                   {draft.category === "tracksuits" ? (
                     <span className="mt-1 block text-xs text-muted">
                       Half-zip adult R980. Full-zip adult R1 200. Kids half-zip R900. Kids full-zip R980.

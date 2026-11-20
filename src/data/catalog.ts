@@ -1,4 +1,5 @@
 import type { SizeChartId } from "@/data/size-charts";
+import { MLB_SEEDS } from "@/data/mlb";
 import { POLO_SEEDS } from "@/data/polos";
 import { RUGBY_SEEDS } from "@/data/rugby";
 
@@ -8,7 +9,23 @@ export type Category =
   | "polos"
   | "retro"
   | "retro-jackets"
+  | "long-sleeves"
+  | "windbreaker"
+  | "hoodies"
   | "tracksuits"
+  | "full-tracksuit"
+  | "puffer"
+  | "intl-retro"
+  | "clubs-retro"
+  | "beanies"
+  | "banners"
+  | "gloves"
+  | "keychains"
+  | "scarfs"
+  | "match-flag"
+  | "shin-pads"
+  | "footballs"
+  | "socks"
   | "f1"
   | "nfl"
   | "mlb"
@@ -27,21 +44,42 @@ export const RETRO_PRICE = 850;
 export const TRAINING_PRICE = 800;
 export const F1_PRICE = 850;
 export const WIND_PRICE = 900;
+export const PUFFER_PRICE = 1100;
+export const HOODIE_PRICE = 750;
+export const TRACKSUIT_PRICE = 1200;
+export const BEANIE_PRICE = 250;
+export const SCARF_PRICE = 280;
+export const GLOVE_PRICE = 250;
+export const SOCK_PRICE = 150;
+export const KEYCHAIN_PRICE = 80;
+export const FLAG_PRICE = 350;
+export const SHIN_PRICE = 280;
+export const BALL_PRICE = 350;
 
 export type ShirtVersion = "player" | "fan";
 export type Offer = "stock" | "single";
 
 export function listPrice(category: Category): number | null {
-  if (category === "retro") return RETRO_PRICE;
+  if (category === "retro" || category === "clubs-retro" || category === "intl-retro") return RETRO_PRICE;
   if (category === "f1") return F1_PRICE;
-  if (category === "retro-jackets") return WIND_PRICE;
-  if (category === "polos") return TRAINING_PRICE;
-  if (category === "tracksuits" || category === "boots" || category === "babies") return null;
+  if (category === "retro-jackets" || category === "windbreaker") return WIND_PRICE;
+  if (category === "puffer") return PUFFER_PRICE;
+  if (category === "hoodies") return HOODIE_PRICE;
+  if (category === "tracksuits" || category === "full-tracksuit") return TRACKSUIT_PRICE;
+  if (category === "beanies") return BEANIE_PRICE;
+  if (category === "scarfs") return SCARF_PRICE;
+  if (category === "gloves") return GLOVE_PRICE;
+  if (category === "socks") return SOCK_PRICE;
+  if (category === "keychains") return KEYCHAIN_PRICE;
+  if (category === "banners" || category === "match-flag") return FLAG_PRICE;
+  if (category === "shin-pads") return SHIN_PRICE;
+  if (category === "footballs") return BALL_PRICE;
+  if (category === "boots" || category === "babies") return null;
   return JERSEY_PRICE;
 }
 
-/** Start years for a shirt season, 1970/71 through 2030/31. */
-export const SEASON_YEARS = Array.from({ length: 2030 - 1970 + 1 }, (_, index) => 1970 + index);
+/** Start years for a shirt season, 1900/01 through 2030/31. */
+export const SEASON_YEARS = Array.from({ length: 2030 - 1900 + 1 }, (_, index) => 1900 + index);
 
 export function seasonCode(startYear: number) {
   const end = startYear + 1;
@@ -126,12 +164,11 @@ export type Product = {
 };
 
 export const CATEGORIES: { id: Category; label: string; nav: string; short: string; images: string[] }[] = [
-  { id: "new", label: "New Arrivals", nav: "New", short: "NEW", images: ["/categories/new.jpg"] },
   {
     id: "leagues",
-    label: "Leagues",
-    nav: "Leagues",
-    short: "LG",
+    label: "League Kits 26/27",
+    nav: "League Kits 26/27",
+    short: "26/27",
     images: [
       "/leagues/premier-league.png",
       "/leagues/laliga.png",
@@ -142,9 +179,24 @@ export const CATEGORIES: { id: Category; label: string; nav: string; short: stri
     ],
   },
   { id: "polos", label: "Polo Shirts", nav: "Polos", short: "POLO", images: ["/catalog/polos/shelf.jpg"] },
-  { id: "retro", label: "Retro Jerseys", nav: "Retro", short: "RET", images: ["/categories/retro.jpg"] },
-  { id: "retro-jackets", label: "Retro Jackets", nav: "Jackets", short: "JKT", images: ["/categories/jackets.jpg"] },
+  { id: "long-sleeves", label: "Long Sleeves", nav: "Long sleeves", short: "LS", images: ["/categories/new.jpg"] },
+  { id: "windbreaker", label: "Double Sided Windbreaker", nav: "Windbreaker", short: "WIND", images: ["/categories/jackets.jpg"] },
+  { id: "hoodies", label: "Hoodies", nav: "Hoodies", short: "HOOD", images: ["/categories/tracksuits.jpg"] },
   { id: "tracksuits", label: "Tracksuits", nav: "Track", short: "TRK", images: ["/categories/tracksuits.jpg"] },
+  { id: "full-tracksuit", label: "Full Track Suit", nav: "Full kit", short: "FULL", images: ["/categories/tracksuits.jpg"] },
+  { id: "puffer", label: "Puffer Jackets", nav: "Puffer", short: "PUFF", images: ["/categories/jackets.jpg"] },
+  { id: "retro-jackets", label: "Retro Jackets", nav: "Jackets", short: "JKT", images: ["/categories/jackets.jpg"] },
+  { id: "intl-retro", label: "International Retro", nav: "Intl retro", short: "INT", images: ["/categories/retro.jpg"] },
+  { id: "clubs-retro", label: "Clubs Retro", nav: "Clubs retro", short: "CLB", images: ["/categories/retro.jpg"] },
+  { id: "beanies", label: "Beanies", nav: "Beanies", short: "BEAN", images: ["/categories/new.jpg"] },
+  { id: "banners", label: "Banners", nav: "Banners", short: "BAN", images: ["/categories/new.jpg"] },
+  { id: "gloves", label: "Gloves", nav: "Gloves", short: "GLV", images: ["/categories/new.jpg"] },
+  { id: "keychains", label: "Keychains", nav: "Keychains", short: "KEY", images: ["/categories/new.jpg"] },
+  { id: "scarfs", label: "Scarfs", nav: "Scarfs", short: "SCF", images: ["/categories/new.jpg"] },
+  { id: "match-flag", label: "Match Flag", nav: "Flags", short: "FLAG", images: ["/categories/new.jpg"] },
+  { id: "shin-pads", label: "Shin Pads", nav: "Shin pads", short: "SHIN", images: ["/categories/boots.jpg"] },
+  { id: "footballs", label: "Footballs", nav: "Footballs", short: "BALL", images: ["/categories/boots.jpg"] },
+  { id: "socks", label: "Socks", nav: "Socks", short: "SOCK", images: ["/categories/new.jpg"] },
   { id: "f1", label: "Formula 1", nav: "F1", short: "F1", images: ["/leagues/f1.jpg"] },
   { id: "nfl", label: "NFL", nav: "NFL", short: "NFL", images: ["/leagues/nfl.jpg"] },
   { id: "mlb", label: "MLB", nav: "MLB", short: "MLB", images: ["/categories/mlb.jpg"] },
@@ -184,17 +236,24 @@ export function categoryLabel(id: string) {
   return CATEGORIES.find((item) => item.id === id)?.label ?? id;
 }
 
+/** Shelves with at least one kit. Empty shelves stay off the shop. */
+export function stockedCategories(products: { category: string }[]) {
+  const counts = new Map<string, number>();
+  for (const product of products) counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
+  return CATEGORIES.filter((category) => (counts.get(category.id) ?? 0) > 0);
+}
+
 export function availabilityLabel(id: string) {
   return AVAILABILITY.find((item) => item.id === id)?.label ?? id;
 }
 
 export function coarseSport(category: Category) {
-  if (category === "retro" || category === "retro-jackets") return "retro";
+  if (category === "retro" || category === "retro-jackets" || category === "intl-retro" || category === "clubs-retro") return "retro";
   if (category === "nfl") return "nfl";
   if (category === "mlb") return "mlb";
   if (category === "rugby") return "rugby";
   if (category === "f1") return "f1";
-  if (category === "tracksuits") return "tracksuit";
+  if (category === "tracksuits" || category === "full-tracksuit" || category === "hoodies" || category === "puffer") return "tracksuit";
   if (category === "boots") return "boots";
   if (category === "babies") return "baby";
   return "football";
@@ -294,6 +353,26 @@ export const products: Product[] = [
     sizes: ["S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"],
     sizeChart: "rugby" as const,
     printable: true,
+    season: seed.season,
+  })),
+  ...MLB_SEEDS.map((seed) => ({
+    slug: seed.slug,
+    name: seed.name,
+    team: seed.team,
+    category: "mlb" as const,
+    availability: "on_hand" as const,
+    region: "international" as const,
+    kind: "jersey" as const,
+    price: JERSEY_PRICE,
+    fanPrice: JERSEY_PRICE,
+    boxPrice: null,
+    boxFanPrice: null,
+    image: `/catalog/mlb/${seed.file}`,
+    blurb: `Team: ${seed.team}. Colour: ${seed.colour}. Year: ${seed.year}. Type: Short sleeve. ${seed.note}`,
+    stock: 1,
+    sizes: ["S", "M", "L", "XL", "2XL", "3XL"],
+    sizeChart: "mlb" as const,
+    printable: false,
     season: seed.season,
   })),
 ];

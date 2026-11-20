@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { products as seedProducts, coarseSport, isCategory, normalizeSeason, type Availability, type Category, type Product } from "@/data/catalog";
+import type { Sql } from "@/lib/db";
+import { correctListing } from "@/data/kit-facts";
 import { chartAllowsPrint, chartForCategory, isSizeChart, sizesFor, type SizeChartId } from "@/data/size-charts";
 
 export type AdminProduct = Product & { hidden: boolean };
@@ -63,6 +65,122 @@ function toProduct(row: Row): Product {
 
 function toAdmin(row: Row): AdminProduct {
   return { ...toProduct(row), hidden: Boolean(row.hidden) };
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+
+async function readPriceBook(sql: Sql) {
+  const { parseBook, readPriceFile, writePriceFile } = await import("@/lib/price-book");
+  await sql`
+    create table if not exists shop_settings (
+      key text primary key,
+      value text not null
+    )
+  `;
+  const rows = await sql<{ value: string }>`select value from shop_settings where key = 'price_book'`;
+  const stored = parseBook(rows[0]?.value);
+  if (Object.keys(stored).length > 0) return stored;
+  const filed = readPriceFile();
+  if (Object.keys(filed).length === 0) return stored;
+  const value = JSON.stringify(filed);
+  await sql`
+    insert into shop_settings (key, value) values ('price_book', ${value})
+    on conflict (key) do update set value = excluded.value
+  `;
+  writePriceFile(filed);
+  return filed;
+}
+
+async function rememberPrice(sql: Sql, slug: string, price: number) {
+  if (!slug || !Number.isInteger(price)) return;
+  const { writePriceFile } = await import("@/lib/price-book");
+  const book = await readPriceBook(sql);
+  book[slug] = price;
+  const value = JSON.stringify(book);
+  await sql`
+    insert into shop_settings (key, value) values ('price_book', ${value})
+    on conflict (key) do update set value = excluded.value
+  `;
+  writePriceFile(book);
+}
+
+async function forgetPrice(sql: Sql, slug: string) {
+  const { writePriceFile } = await import("@/lib/price-book");
+  const book = await readPriceBook(sql);
+  if (!(slug in book)) return;
+  delete book[slug];
+  const value = JSON.stringify(book);
+  await sql`
+    insert into shop_settings (key, value) values ('price_book', ${value})
+    on conflict (key) do update set value = excluded.value
+  `;
+  writePriceFile(book);
+}
+
+/** Owner prices win over the shelf list and the daily kit check. */
+async function enforcePrices(sql: Sql) {
+  const book = await readPriceBook(sql);
+  for (const [slug, price] of Object.entries(book)) {
+    await sql`
+      update products
+      set price = ${price}, fan_price = ${price}
+      where slug = ${slug}
+        and (price is distinct from ${price} or fan_price is distinct from ${price})
+    `;
+  }
+}
+
+async function verifyCatalog(sql: Awaited<ReturnType<typeof ready>>) {
+  await sql`
+    create table if not exists shop_settings (
+      key text primary key,
+      value text not null
+    )
+  `;
+  const stamp = await sql<{ value: string }>`select value from shop_settings where key = 'catalog_verified_at'`;
+  const last = Number(stamp[0]?.value ?? 0);
+  if (Number.isFinite(last) && Date.now() - last < DAY) return;
+  const rows = await sql<{
+    slug: string;
+    name: string;
+    team: string;
+    category: string;
+    price: number;
+    blurb: string;
+    season: string;
+    size_chart: string;
+    sizes: string;
+  }>`select slug, name, team, category, price, blurb, season, size_chart, sizes from products`;
+  for (const row of rows) {
+    const next = correctListing({
+      name: row.name,
+      team: row.team,
+      category: row.category,
+      price: Number(row.price),
+      blurb: row.blurb ?? "",
+      season: row.season ?? "",
+    });
+    if (!isCategory(next.category)) continue;
+    const moved = next.category !== row.category;
+    const sizes = moved ? sizesFor(next.sizeChart).join(",") : "";
+    await sql`
+      update products
+      set name = ${next.name},
+          team = ${next.team},
+          category = ${next.category},
+          sport = ${coarseSport(next.category)},
+          blurb = ${next.blurb},
+          size_chart = ${moved ? next.sizeChart : row.size_chart},
+          sizes = ${moved ? sizes : row.sizes},
+          updated_at = now()
+      where slug = ${row.slug}
+    `;
+  }
+  const now = String(Date.now());
+  await sql`
+    insert into shop_settings (key, value) values ('catalog_verified_at', ${now})
+    on conflict (key) do update set value = excluded.value
+  `;
 }
 
 async function ready() {
@@ -145,6 +263,7 @@ async function ready() {
       on conflict (slug) do nothing
     `;
   }
+  await enforcePrices(sql);
   return sql;
 }
 
@@ -267,6 +386,8 @@ function slugify(name: string) {
 export const listPublicProducts = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const sql = await ready();
+    await verifyCatalog(sql);
+    await enforcePrices(sql);
     const rows = await sql<Row>`
       select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season, gallery
       from products
@@ -312,6 +433,7 @@ export const loadDesk = createServerFn({ method: "GET" })
     const owner = ownerRows[0]?.user_id ?? null;
     if (!owner) return { state: "unclaimed" as const, products: [] as AdminProduct[] };
     if (owner !== context.userId) return { state: "taken" as const, products: [] as AdminProduct[] };
+    await enforcePrices(sql);
     const rows = await sql<Row>`
       select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season, gallery
       from products
@@ -341,12 +463,19 @@ export const saveProduct = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const parsed = parseWrite(data);
     if (!parsed.ok) return { ok: false as const, error: parsed.error };
+    const fixed = correctListing(parsed.data);
+    if (!isCategory(fixed.category)) return { ok: false as const, error: "Pick a category." };
     const sql = await ready();
     const ownerRows = await sql<{ user_id: string | null }>`select user_id from shop_owner where id = 1`;
     if (ownerRows[0]?.user_id !== context.userId) {
       return { ok: false as const, error: "Only the shop owner can change the rail." };
     }
-    const input = parsed.data;
+    const input = {
+      ...parsed.data,
+      ...fixed,
+      price: parsed.data.price,
+      fanPrice: parsed.data.price,
+    };
     const image = input.image || "/catalog/hero.jpg";
     if (!isSafeImage(image)) return { ok: false as const, error: "Add a picture of the kit." };
 
@@ -378,7 +507,14 @@ export const saveProduct = createServerFn({ method: "POST" })
       `;
       const row = rows[0];
       if (!row) return { ok: false as const, error: "That kit is no longer on the rail." };
-      return { ok: true as const, product: toAdmin(row) };
+      await rememberPrice(sql, row.slug, input.price);
+      await enforcePrices(sql);
+      const saved = await sql<Row>`
+        select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season, gallery
+        from products
+        where slug = ${row.slug}
+      `;
+      return { ok: true as const, product: toAdmin(saved[0] ?? row) };
     }
 
     let slug = slugify(input.name);
@@ -419,7 +555,14 @@ export const saveProduct = createServerFn({ method: "POST" })
     `;
     const row = rows[0];
     if (!row) return { ok: false as const, error: "Could not add that kit." };
-    return { ok: true as const, product: toAdmin(row) };
+    await rememberPrice(sql, row.slug, input.price);
+    await enforcePrices(sql);
+    const saved = await sql<Row>`
+      select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season
+      from products
+      where slug = ${row.slug}
+    `;
+    return { ok: true as const, product: toAdmin(saved[0] ?? row) };
   });
 
 export const removeProduct = createServerFn({ method: "POST" })
@@ -433,5 +576,6 @@ export const removeProduct = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Only the shop owner can change the rail." };
     }
     await sql`delete from products where slug = ${slug}`;
+    await forgetPrice(sql, slug);
     return { ok: true as const };
   });

@@ -10,10 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as BulkRouteImport } from './routes/bulk'
 import { Route as CheckoutRouteImport } from './routes/checkout'
-import { Route as LoginRouteImport } from './routes/login'
+import { Route as DeskRouteImport } from './routes/desk'
+import { Route as DeskSignInRouteImport } from './routes/desk-sign-in'
 import { Route as NewsRouteImport } from './routes/news'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PenaltiesRouteImport } from './routes/penalties'
@@ -31,11 +31,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BulkRoute = BulkRouteImport.update({
   id: '/bulk',
   path: '/bulk',
@@ -46,9 +41,14 @@ const CheckoutRoute = CheckoutRouteImport.update({
   path: '/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const DeskRoute = DeskRouteImport.update({
+  id: '/desk',
+  path: '/desk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeskSignInRoute = DeskSignInRouteImport.update({
+  id: '/desk-sign-in',
+  path: '/desk-sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NewsRoute = NewsRouteImport.update({
@@ -109,10 +109,10 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/bulk': typeof BulkRoute
   '/checkout': typeof CheckoutRoute
-  '/login': typeof LoginRoute
+  '/desk': typeof DeskRoute
+  '/desk-sign-in': typeof DeskSignInRoute
   '/news': typeof NewsRoute
   '/orders': typeof OrdersRoute
   '/penalties': typeof PenaltiesRoute
@@ -127,10 +127,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/bulk': typeof BulkRoute
   '/checkout': typeof CheckoutRoute
-  '/login': typeof LoginRoute
+  '/desk': typeof DeskRoute
+  '/desk-sign-in': typeof DeskSignInRoute
   '/news': typeof NewsRoute
   '/orders': typeof OrdersRoute
   '/penalties': typeof PenaltiesRoute
@@ -146,10 +146,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/bulk': typeof BulkRoute
   '/checkout': typeof CheckoutRoute
-  '/login': typeof LoginRoute
+  '/desk': typeof DeskRoute
+  '/desk-sign-in': typeof DeskSignInRoute
   '/news': typeof NewsRoute
   '/orders': typeof OrdersRoute
   '/penalties': typeof PenaltiesRoute
@@ -166,10 +166,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/bulk'
     | '/checkout'
-    | '/login'
+    | '/desk'
+    | '/desk-sign-in'
     | '/news'
     | '/orders'
     | '/penalties'
@@ -184,10 +184,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/bulk'
     | '/checkout'
-    | '/login'
+    | '/desk'
+    | '/desk-sign-in'
     | '/news'
     | '/orders'
     | '/penalties'
@@ -202,10 +202,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/admin'
     | '/bulk'
     | '/checkout'
-    | '/login'
+    | '/desk'
+    | '/desk-sign-in'
     | '/news'
     | '/orders'
     | '/penalties'
@@ -221,10 +221,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
   BulkRoute: typeof BulkRoute
   CheckoutRoute: typeof CheckoutRoute
-  LoginRoute: typeof LoginRoute
+  DeskRoute: typeof DeskRoute
+  DeskSignInRoute: typeof DeskSignInRoute
   NewsRoute: typeof NewsRoute
   OrdersRoute: typeof OrdersRoute
   PenaltiesRoute: typeof PenaltiesRoute
@@ -247,13 +247,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/bulk': {
       id: '/bulk'
       path: '/bulk'
@@ -268,11 +261,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/desk': {
+      id: '/desk'
+      path: '/desk'
+      fullPath: '/desk'
+      preLoaderRoute: typeof DeskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/desk-sign-in': {
+      id: '/desk-sign-in'
+      path: '/desk-sign-in'
+      fullPath: '/desk-sign-in'
+      preLoaderRoute: typeof DeskSignInRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/news': {
@@ -357,10 +357,10 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
   BulkRoute: BulkRoute,
   CheckoutRoute: CheckoutRoute,
-  LoginRoute: LoginRoute,
+  DeskRoute: DeskRoute,
+  DeskSignInRoute: DeskSignInRoute,
   NewsRoute: NewsRoute,
   OrdersRoute: OrdersRoute,
   PenaltiesRoute: PenaltiesRoute,

@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { deliveryName, formatMoney, shopQuery } from "@/data/catalog";
-import { useShop } from "@/lib/store";
+import { listCustomerOrders } from "@/lib/orders.functions";
+import { useShop, type Order } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
 
 export const Route = createFileRoute("/orders")({
@@ -10,13 +12,30 @@ export const Route = createFileRoute("/orders")({
 
 function OrdersPage() {
   const hydrated = useHydrated();
-  const orders = useShop((s) => s.orders);
+  const localOrders = useShop((s) => s.orders);
+  const account = useShop((s) => s.account);
+  const [saved, setSaved] = useState<Order[]>([]);
+
+  useEffect(() => {
+    if (!account) return;
+    let live = true;
+    void listCustomerOrders({ data: { customerId: account.id } }).then((result) => {
+      if (live && result.ok) setSaved(result.orders);
+    });
+    return () => {
+      live = false;
+    };
+  }, [account]);
+
+  const orders = [...saved, ...localOrders.filter((order) => !saved.some((row) => row.id === order.id))];
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-5xl uppercase">Your orders</h1>
       <p className="mt-3 text-sm text-muted">
-        Saved on this phone. Track any order with the code and the WhatsApp number you used at checkout.
+        {account
+          ? `Saved on ${account.name}'s account, so they stay when you come back. Also kept on this phone.`
+          : "Saved on this phone. Sign up at checkout and later orders stay on your account."}
       </p>
       {!hydrated ? <p className="mt-8 text-muted">Loading…</p> : null}
       {hydrated && orders.length === 0 ? (

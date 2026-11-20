@@ -1,6 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { contactOk, validEmail, validMobile } from "@/lib/account";
-import { registerCustomer } from "@/lib/community.functions";
+import { confirmCustomer, registerCustomer } from "@/lib/community.functions";
+import { pingCatalog } from "@/lib/catalog-context";
 import { useShop, type Account } from "@/lib/store";
 
 export function AccountGate({
@@ -23,6 +24,8 @@ export function AccountGate({
   const [over18, setOver18] = useState(account?.over18 ?? false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pending, setPending] = useState<{ id: string; channel: "email" | "sms"; code: string } | null>(null);
+  const [code, setCode] = useState("");
 
   if (account && (!needAdult || account.over18)) return children;
 
@@ -61,20 +64,43 @@ export function AccountGate({
     }
     setBusy(true);
     try {
+      if (pending) {
+        const confirmed = await confirmCustomer({ data: { id: pending.id, code } });
+        if (!confirmed.ok) {
+          setError(confirmed.error);
+          setBusy(false);
+          return;
+        }
+        setAccount({
+          id: confirmed.id,
+          name: confirmed.name,
+          email: confirmed.email,
+          phone: confirmed.phone,
+          over18: needAdult ? over18 : false,
+        });
+        pingCatalog();
+        return;
+      }
       const result = await registerCustomer({ data: { name, email: nextEmail, phone: nextPhone } });
       if (!result.ok) {
         setError(result.error);
         setBusy(false);
         return;
       }
-      const saved: Account = {
-        id: result.id,
-        name: result.name,
-        email: result.email,
-        phone: result.phone,
-        over18: needAdult ? over18 : account?.over18 ?? false,
-      };
-      setAccount(saved);
+      if (result.verified) {
+        const saved: Account = {
+          id: result.id,
+          name: result.name,
+          email: result.email,
+          phone: result.phone,
+          over18: needAdult ? over18 : account?.over18 ?? false,
+        };
+        setAccount(saved);
+        pingCatalog();
+        return;
+      }
+      setPending({ id: result.id, channel: result.channel, code: result.code });
+      setBusy(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save your account.");
       setBusy(false);
@@ -91,6 +117,19 @@ export function AccountGate({
           {account.name}
           {account.email || account.phone ? <span className="text-muted"> · {account.email || account.phone}</span> : null}
         </p>
+      ) : pending ? (
+        <>
+          <p className="mt-4 text-sm text-muted">
+            {pending.channel === "email"
+              ? "Email sending is not linked yet, so the code is shown here once. Enter it to open the account. It expires in 30 minutes. An old account still signs in without a new code."
+              : "SMS sending is not linked yet, so the code is shown here once. Enter it to open the account. It expires in 30 minutes. An old account still signs in without a new code."}
+          </p>
+          <p className="mt-3 font-display text-4xl tracking-widest">{pending.code}</p>
+          <label className="mt-4 block text-sm">
+            Code
+            <input className="field mt-1" inputMode="numeric" value={code} onChange={(event) => setCode(event.target.value)} autoComplete="one-time-code" />
+          </label>
+        </>
       ) : (
         <>
           <label className="mt-4 block text-sm">
@@ -126,7 +165,7 @@ export function AccountGate({
       ) : null}
       {error ? <p className="mt-3 text-sm text-danger">{error}</p> : null}
       <button className="btn btn-primary mt-5" type="submit" disabled={busy}>
-        {busy ? "Saving…" : account ? "Continue" : "Create account"}
+        {busy ? "Saving…" : pending ? "Confirm code" : account ? "Continue" : "Create account"}
       </button>
     </form>
   );

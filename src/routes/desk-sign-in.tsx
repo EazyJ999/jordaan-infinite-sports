@@ -3,7 +3,7 @@ import { useState, type FormEvent } from "react";
 import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute("/desk-sign-in")({
   head: () => ({ meta: [{ title: "Admin · J.I.S" }] }),
   component: LoginPage,
 });
@@ -17,7 +17,7 @@ function LoginPage() {
       </main>
     );
   }
-  if (user) return <Navigate to="/admin" />;
+  if (user) return <Navigate to="/desk" />;
   return <LoginForm />;
 }
 
@@ -52,19 +52,19 @@ function LoginForm() {
               name: name.trim(),
               email: email.trim(),
               password,
-              callbackURL: "/admin",
+              callbackURL: "/desk",
             })
           : await authClient.signIn.email({
               email: email.trim(),
               password,
-              callbackURL: "/admin",
+              callbackURL: "/desk",
             });
       if (result.error) {
         setError(result.error.message || "That login did not work.");
         setBusy(false);
         return;
       }
-      window.location.assign("/admin");
+      window.location.assign("/desk");
     } catch (err) {
       setError(err instanceof Error ? err.message : "That login did not work.");
       setBusy(false);
@@ -138,7 +138,7 @@ function LoginForm() {
                   key={provider.providerId}
                   type="button"
                   className="btn btn-line w-full"
-                  onClick={() => void signIn(provider.providerId, { callbackURL: "/admin" })}
+                  onClick={() => void signIn(provider.providerId, { callbackURL: "/desk" })}
                 >
                   Continue with {provider.label}
                 </button>

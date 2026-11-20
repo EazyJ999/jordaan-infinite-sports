@@ -62,7 +62,12 @@ function DailyBoard() {
     <div>
       <SignedInLine />
       <p className="mt-3 max-w-xl text-sm text-muted">
-        Today’s football, rugby and NFL, refreshed through the day. A finished match shows the result. A match that has not started does not get a called score. J.I.S is not a bookmaker and does not take bets. 18+ only. Gamble responsibly.
+        Today’s football, rugby and NFL, checked every hour. A finished match shows the result. An open match can show a read from the league table and a home edge, the same kind of inputs used by Football Whispers, Windrawwin and BetMines. It is not their tip, and it is not a score. J.I.S is not a bookmaker and does not take bets. 18+ only. Gamble responsibly.{" "}
+        <a className="underline" href="https://footballwhispers.com/blog/champions-league-betting/">Football Whispers</a>
+        {" · "}
+        <a className="underline" href="https://www.windrawwin.com/predictions/today/popular-leagues/">Windrawwin</a>
+        {" · "}
+        <a className="underline" href="https://betmines.com/">BetMines</a>
       </p>
       {when ? <p className="mt-2 text-xs uppercase tracking-widest text-muted">Updated {when}</p> : null}
       {results.length > 0 ? (
@@ -97,6 +102,8 @@ function DailyBoard() {
                       <>
                         Full time: <span className="text-brass">{game.score}</span>
                       </>
+                    ) : game.lean ? (
+                      game.lean
                     ) : (
                       <span className="text-muted">Not started. No score called.</span>
                     )}

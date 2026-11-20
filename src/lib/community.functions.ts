@@ -11,7 +11,9 @@ export type NewsItem = {
 
 const FEEDS = [
   { source: "BBC Sport", url: "https://feeds.bbci.co.uk/sport/rss.xml" },
+  { source: "BBC Football", url: "https://feeds.bbci.co.uk/sport/football/rss.xml" },
   { source: "ESPN", url: "https://www.espn.com/espn/rss/news" },
+  { source: "ESPN Soccer", url: "https://www.espn.com/espn/rss/soccer/news" },
   { source: "Sky Sports", url: "https://www.skysports.com/rss/12040" },
   { source: "The Guardian", url: "https://www.theguardian.com/sport/rss" },
   { source: "News24 Sport", url: "https://feeds.news24.com/articles/sport/rss" },
@@ -33,6 +35,7 @@ export type DailyFixture = {
   league: string;
   score: string | null;
   status: string;
+  lean: string;
 };
 
 function decode(value: string) {
@@ -167,6 +170,7 @@ async function pullDay(day: string, sport: DailyFixture["sport"], query: string)
         league: event.strLeague ?? sport,
         score,
         status: finished ? "Full time" : "Not started",
+        lean: "",
       };
     });
   } catch {
@@ -174,23 +178,81 @@ async function pullDay(day: string, sport: DailyFixture["sport"], query: string)
   }
 }
 
+const TABLES = [
+  { league: "English Premier League", id: "4328" },
+  { league: "Spanish La Liga", id: "4335" },
+  { league: "Italian Serie A", id: "4332" },
+  { league: "German Bundesliga", id: "4331" },
+  { league: "French Ligue 1", id: "4334" },
+];
+
+type TableSide = { name: string; points: number; league: string };
+
+async function pullTables(): Promise<TableSide[]> {
+  const seasons = ["2026-2027", "2025-2026"];
+  const sides: TableSide[] = [];
+  for (const table of TABLES) {
+    for (const season of seasons) {
+      try {
+        const response = await fetch(
+          `https://www.thesportsdb.com/api/v1/json/123/lookuptable.php?l=${table.id}&s=${season}`,
+          { headers: { "user-agent": "JIS-News/1.0" }, signal: AbortSignal.timeout(8000) },
+        );
+        if (!response.ok) continue;
+        const body = (await response.json()) as { table?: { strTeam?: string; intPoints?: string }[] | null };
+        const rows = body.table ?? [];
+        if (rows.length === 0) continue;
+        for (const row of rows) {
+          if (!row.strTeam) continue;
+          sides.push({ name: row.strTeam, points: Number(row.intPoints ?? 0), league: table.league });
+        }
+        break;
+      } catch {
+        continue;
+      }
+    }
+  }
+  return sides;
+}
+
+function sidePoints(sides: TableSide[], team: string, league: string) {
+  const key = team.toLowerCase();
+  const row = sides.find((side) => league.toLowerCase().includes(side.league.toLowerCase().slice(0, 8)) && side.name.toLowerCase() === key)
+    ?? sides.find((side) => side.name.toLowerCase() === key);
+  return row ? row.points : null;
+}
+
+/** Home edge plus league points. Same inputs the public tip sites use: table and venue. No made-up score. */
+function leanFromTable(fixture: DailyFixture, sides: TableSide[]) {
+  const home = sidePoints(sides, fixture.home, fixture.league);
+  const away = sidePoints(sides, fixture.away, fixture.league);
+  if (home == null || away == null) return "";
+  const homeEdge = home + 3;
+  if (homeEdge >= away + 8) return `${fixture.home} on the table, with a home edge. Not a score.`;
+  if (away >= home + 6) return `${fixture.away} on the table, even away. Not a score.`;
+  return "Too close on the table to call. Not a score.";
+}
+
 export const listDailyBoard = createServerFn({ method: "GET" }).handler(async () => {
   const cached = memory.__jisBoard;
   if (cached && Date.now() - cached.at < HOUR && (cached.results.length > 0 || cached.fixtures.length > 0)) {
     return { results: cached.results, fixtures: cached.fixtures, updatedAt: new Date(cached.at).toISOString(), fresh: false };
   }
-  const days = [sastDay(-1), sastDay(0), sastDay(1)];
-  const batches = await Promise.all(
-    days.flatMap((day) => BOARD_SPORTS.map((item) => pullDay(day, item.sport, item.query))),
-  );
   const seen = new Set<string>();
   const fixtures: DailyFixture[] = [];
-  for (const batch of batches) {
-    for (const fixture of batch) {
-      if (seen.has(fixture.id)) continue;
-      seen.add(fixture.id);
-      fixtures.push(fixture);
+  for (const day of [sastDay(-1), sastDay(0), sastDay(1)]) {
+    for (const sport of BOARD_SPORTS) {
+      for (const fixture of await pullDay(day, sport.sport, sport.query)) {
+        if (seen.has(fixture.id)) continue;
+        seen.add(fixture.id);
+        fixtures.push(fixture);
+      }
     }
+  }
+  const tables = await pullTables();
+  for (const fixture of fixtures) {
+    if (fixture.score) continue;
+    fixture.lean = leanFromTable(fixture, tables);
   }
   const results = fixtures
     .filter((fixture) => fixture.score)
@@ -223,15 +285,68 @@ export const registerCustomer = createServerFn({ method: "POST" })
     if (!contactOk(email, phone)) return { ok: false as const, error: "Add an email or a mobile number." };
     const { getSql } = await import("@/lib/db");
     const sql = await getSql();
-    type Row = { id: string; name: string; email: string; phone: string };
+    await sql`alter table customers add column if not exists verified boolean not null default true`;
+    await sql`
+      create table if not exists customer_codes (
+        customer_id text primary key,
+        code text not null,
+        expires_at timestamptz not null
+      )
+    `;
+    type Row = { id: string; name: string; email: string; phone: string; verified: boolean };
     const existing = email
-      ? await sql<Row>`select id, name, email, phone from customers where lower(email) = lower(${email}) limit 1`
-      : await sql<Row>`select id, name, email, phone from customers where phone = ${phone} limit 1`;
+      ? await sql<Row>`select id, name, email, phone, verified from customers where lower(email) = lower(${email}) limit 1`
+      : await sql<Row>`select id, name, email, phone, verified from customers where phone = ${phone} limit 1`;
     const found = existing[0];
-    if (found) return { ok: true as const, id: found.id, name: found.name, email: found.email, phone: found.phone };
-    const id = `CUS-${Date.now().toString(36).toUpperCase()}`;
-    await sql`insert into customers (id, name, email, phone) values (${id}, ${name}, ${email}, ${phone})`;
-    return { ok: true as const, id, name, email, phone };
+    if (found?.verified !== false && found) {
+      return { ok: true as const, verified: true as const, id: found.id, name: found.name, email: found.email, phone: found.phone };
+    }
+    const id = found?.id ?? `CUS-${Date.now().toString(36).toUpperCase()}`;
+    if (!found) {
+      await sql`insert into customers (id, name, email, phone, verified) values (${id}, ${name}, ${email}, ${phone}, false)`;
+    }
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const expires = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    await sql`
+      insert into customer_codes (customer_id, code, expires_at) values (${id}, ${code}, ${expires})
+      on conflict (customer_id) do update set code = excluded.code, expires_at = excluded.expires_at
+    `;
+    return {
+      ok: true as const,
+      verified: false as const,
+      id,
+      name: found?.name ?? name,
+      email,
+      phone,
+      channel: email ? ("email" as const) : ("sms" as const),
+      code,
+    };
+  });
+
+export const confirmCustomer = createServerFn({ method: "POST" })
+  .validator((input: unknown) => input)
+  .handler(async ({ data }) => {
+    if (!data || typeof data !== "object") return { ok: false as const, error: "Missing the code." };
+    const raw = data as Record<string, unknown>;
+    const id = typeof raw.id === "string" ? raw.id.trim() : "";
+    const code = typeof raw.code === "string" ? raw.code.replace(/\D/g, "") : "";
+    if (!id.startsWith("CUS-") || code.length !== 6) return { ok: false as const, error: "Enter the 6-digit code." };
+    const { getSql } = await import("@/lib/db");
+    const sql = await getSql();
+    const rows = await sql<{ code: string; expires_at: string; name: string; email: string; phone: string }>`
+      select c.code, c.expires_at::text as expires_at, u.name, u.email, u.phone
+      from customer_codes c
+      join customers u on u.id = c.customer_id
+      where c.customer_id = ${id}
+      limit 1
+    `;
+    const row = rows[0];
+    if (!row || row.code !== code || new Date(row.expires_at).getTime() < Date.now()) {
+      return { ok: false as const, error: "That code is wrong or it has expired. Ask for a new one." };
+    }
+    await sql`update customers set verified = true where id = ${id}`;
+    await sql`delete from customer_codes where customer_id = ${id}`;
+    return { ok: true as const, id, name: row.name, email: row.email, phone: row.phone };
   });
 
 export const enterScoreCompetition = createServerFn({ method: "POST" })

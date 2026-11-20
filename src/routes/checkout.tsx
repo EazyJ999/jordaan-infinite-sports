@@ -174,6 +174,7 @@ function CheckoutPage() {
         notes: form.notes.trim(),
       },
       lines: priced,
+      customerId: account?.id ?? "",
     };
   }
 

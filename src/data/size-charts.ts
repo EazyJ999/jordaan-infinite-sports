@@ -262,13 +262,16 @@ export function chartForCategory(category: string): SizeChartId {
   if (category === "nfl") return "nfl";
   if (category === "mlb") return "mlb";
   if (category === "rugby") return "rugby";
-  if (category === "retro") return "retro";
-  if (category === "retro-jackets") return "windbreaker";
-  if (category === "tracksuits") return "jacket";
+  if (category === "retro" || category === "intl-retro" || category === "clubs-retro") return "retro";
+  if (category === "retro-jackets" || category === "windbreaker" || category === "puffer") return "windbreaker";
+  if (category === "tracksuits" || category === "full-tracksuit" || category === "hoodies") return "jacket";
   if (category === "f1") return "tshirt";
   if (category === "babies") return "baby";
   if (category === "boots") return "boots";
   if (category === "polos") return "training";
+  if (category === "beanies" || category === "scarfs" || category === "gloves" || category === "socks" || category === "keychains" || category === "banners" || category === "match-flag") {
+    return "tshirt";
+  }
   return "player";
 }
 

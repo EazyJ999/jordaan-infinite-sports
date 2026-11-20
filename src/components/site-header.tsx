@@ -57,9 +57,6 @@ export function SiteHeader() {
           <Link to="/shop" search={shopQuery("all", "to_order")} className="text-sm">
             To order
           </Link>
-          <Link to="/shop" search={shopQuery("new")} className="text-sm">
-            New
-          </Link>
           <Link to="/news" className="text-sm">
             News
           </Link>
@@ -77,9 +74,6 @@ export function SiteHeader() {
           </Link>
           <Link to="/bulk" className="text-sm">
             Bulk
-          </Link>
-          <Link to="/admin" className="text-sm text-muted">
-            Admin
           </Link>
         </nav>
         <div className="ml-auto flex items-center">
@@ -149,9 +143,6 @@ export function SiteHeader() {
           <Link to="/shop" search={shopQuery("all", "to_order")} className="py-3 text-lg" onClick={close}>
             Available to order
           </Link>
-          <Link to="/shop" search={shopQuery("new")} className="py-3 text-lg" onClick={close}>
-            New arrivals
-          </Link>
           <Link to="/news" className="py-3 text-lg" onClick={close}>
             Daily news
           </Link>
@@ -172,9 +163,6 @@ export function SiteHeader() {
           </Link>
           <Link to="/orders" className="py-3 text-lg" onClick={close}>
             Your orders
-          </Link>
-          <Link to="/admin" className="py-3 text-lg" onClick={close}>
-            Admin
           </Link>
         </nav>
       ) : null}

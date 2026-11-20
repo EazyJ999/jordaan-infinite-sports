@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { AVAILABILITY, CATEGORIES, TO_ORDER_NOTE, categoryLabel, filterProducts, isShopSort, shopQuery, type ShopQuery } from "@/data/catalog";
+import { AVAILABILITY, TO_ORDER_NOTE, categoryLabel, filterProducts, isShopSort, shopQuery, stockedCategories, type ShopQuery } from "@/data/catalog";
 import { contactHits } from "@/data/site-search";
 import { ProductCard } from "@/components/product-card";
 import { CategoryArt } from "@/components/category-art";
@@ -29,7 +29,8 @@ function ShopPage() {
   const { products } = useCatalog();
   const [draft, setDraft] = useState(search.q);
   const list = filterProducts(products, search);
-  const category = CATEGORIES.find((item) => item.id === search.category);
+  const shelves = stockedCategories(products);
+  const category = shelves.find((item) => item.id === search.category);
   const availability = AVAILABILITY.find((item) => item.id === search.availability);
   const title = category?.label ?? availability?.label ?? "All kits";
 
@@ -107,7 +108,7 @@ function ShopPage() {
         <Chip active={search.category === "all"} onClick={() => setFilter({ category: "all" })}>
           All
         </Chip>
-        {CATEGORIES.map((item) => (
+        {shelves.map((item) => (
           <Chip key={item.id} active={search.category === item.id} onClick={() => setFilter({ category: item.id })}>
             {item.label}
           </Chip>
