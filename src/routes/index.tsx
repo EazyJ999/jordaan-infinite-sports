@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { F1_PRICE, RED_BULL_JACKET, TO_ORDER_NOTE, formatMoney, shopQuery, stockedCategories } from "@/data/catalog";
+import { RED_BULL_JACKET, TO_ORDER_NOTE, formatMoney, shopQuery, stockedCategories } from "@/data/catalog";
 import { CategoryArt } from "@/components/category-art";
 import { JacketReel } from "@/components/jacket-reel";
 import { ProductCard } from "@/components/product-card";
@@ -13,6 +13,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const { products } = useCatalog();
+  const jacket = products.find((product) => product.slug === RED_BULL_JACKET);
   const onHand = products.filter((product) => product.availability === "on_hand" && product.slug !== RED_BULL_JACKET);
   const toOrder = products.filter((product) => product.availability === "to_order" && product.slug !== RED_BULL_JACKET);
   const shelves = stockedCategories(products);
@@ -83,7 +84,7 @@ function Home() {
           <p className="mt-3 max-w-md text-sm text-muted">
             Navy softshell. The photos turn through the front, the back, the side, the sleeve and the neck label.
           </p>
-          <p className="mt-4 font-display text-3xl tabular-nums">{formatMoney(F1_PRICE)}</p>
+          <p className="mt-4 font-display text-3xl tabular-nums">{formatMoney(jacket?.price ?? 0)}</p>
           <Link to="/product/$slug" params={{ slug: RED_BULL_JACKET }} className="btn btn-line mt-5">
             View jacket
           </Link>
