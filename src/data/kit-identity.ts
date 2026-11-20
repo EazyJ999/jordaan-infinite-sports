@@ -107,15 +107,34 @@ export function listingIdentity(input: { name: string; team: string; blurb: stri
   return `${collection.toLowerCase()}|${team}|${colour}|${garment}`;
 }
 
-/** Same team, colour and cut. A photo file name never counts as a different kit. */
 export function isSameKit(
   a: { name: string; team: string; blurb: string },
   b: { name: string; team: string; blurb: string },
 ) {
   const left = listingIdentity(a).split("|");
   const right = listingIdentity(b).split("|");
+  const coloursDiffer = left[2] !== "see photo" && right[2] !== "see photo" && left[2] !== right[2];
+  if (coloursDiffer) return false;
   const sameName = a.name.trim().toLowerCase() === b.name.trim().toLowerCase() && a.name.trim().length > 3;
   if (sameName) return true;
   if (!left[1] || left[1] !== right[1] || left[0] !== right[0] || left[3] !== right[3]) return false;
   return left[2] !== "see photo" && left[2] === right[2];
+}
+
+/** "Mens Real Madrid 202627 Third Long Sleeve Jersey Small" → Real Madrid, third long sleeve. */
+export function tidyKitLabel(name: string, team: string, season: string) {
+  const source = `${name} ${team}`.replace(/[_]+/g, " ").replace(/\s+/g, " ").trim();
+  const match = source.match(
+    /(?:mens|men'?s|men)\s+(.+?)\s+(20)(\d{2})\s*(\d{2})\s+(home|away|third|fourth)?\s*(long sleeve|short sleeve|jersey)?/i,
+  );
+  if (!match) return { name: name.trim(), team: team.trim(), season };
+  const club = (match[1] ?? "").replace(/\b(small|medium|large)\b/gi, "").replace(/\s+/g, " ").trim();
+  const variant = (match[5] ?? "").toLowerCase();
+  const garment = /long sleeve/i.test(source) ? "long sleeve" : (match[6] ?? "jersey").toLowerCase();
+  const title = [club, variant, garment].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  return {
+    name: title.slice(0, 80),
+    team: club.slice(0, 60),
+    season: season || `${match[3]}/${match[4]}`,
+  };
 }

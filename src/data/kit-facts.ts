@@ -1,5 +1,6 @@
 import { chartForCategory, type SizeChartId } from "@/data/size-charts";
 import { seasonYear, type Category } from "@/data/catalog";
+import { tidyKitLabel } from "@/data/kit-identity";
 
 const COLOURS = [
   "black and white",
@@ -110,17 +111,20 @@ export function correctListing(input: {
   blurb: string;
   season: string;
 }): KitFix {
-  const team = input.team.trim() || input.name.trim();
-  const category = shelfFor(input.category, team, input.name);
-  const garment = garmentLabel(category === "local" ? input.category : category, input.name);
-  const colour = colourLabel(input.name, input.blurb);
-  const year = yearLabel(input.season, input.name, input.blurb);
+  const tidy = tidyKitLabel(input.name, input.team, input.season);
+  const team = tidy.team || input.team.trim() || tidy.name;
+  let category = shelfFor(input.category, team, tidy.name);
+  if (/long sleeve/.test(tidy.name.toLowerCase()) && category !== "local") category = "long-sleeves";
+  const garment = garmentLabel(category === "local" ? input.category : category, tidy.name);
+  const colour = colourLabel(tidy.name, input.blurb);
+  const year = yearLabel(tidy.season, tidy.name, input.blurb);
   const facts = `Team: ${team}. Colour: ${colour}. Year: ${year}. Type: ${garment}.`;
   const extra = input.blurb
     .replace(/Team:.*?Type: [^.]+\.\s*/g, "")
+    .replace(/\b\d+\s+photos of this kit\.?/gi, "")
     .trim();
   const blurb = `${facts}${extra ? ` ${extra}` : ""}`.slice(0, 400);
-  const name = input.name.toLowerCase().includes(team.toLowerCase()) ? input.name.trim() : `${team} ${input.name.trim()}`.slice(0, 80);
+  const name = tidy.name.toLowerCase().includes(team.toLowerCase()) ? tidy.name.trim() : `${team} ${tidy.name.trim()}`.slice(0, 80);
   const sizeChart = input.category === "rugby" || category === "rugby" ? "rugby" : chartForCategory(category);
   return {
     name,
@@ -128,7 +132,7 @@ export function correctListing(input: {
     category,
     price: input.price,
     blurb,
-    season: input.season,
+    season: tidy.season,
     sizeChart,
   };
 }

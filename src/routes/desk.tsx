@@ -160,7 +160,7 @@ function Desk({ name }: { name: string }) {
     setError("");
     try {
       const photos: string[] = [];
-      for (const file of list.slice(0, 6)) photos.push(await shrinkPhoto(file));
+      for (const file of list.slice(0, 12)) photos.push(await shrinkPhoto(file));
       setDraft((current) => ({
         ...current,
         image: photos[0] ?? current.image,

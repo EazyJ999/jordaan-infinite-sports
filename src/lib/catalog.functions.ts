@@ -275,7 +275,7 @@ function parseGallery(value: string | null | undefined, image: string) {
   try {
     const parsed = JSON.parse(value) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is string => typeof item === "string" && item !== image && isSafeImage(item)).slice(0, 5);
+    return parsed.filter((item): item is string => typeof item === "string" && item !== image && isSafeImage(item)).slice(0, 11);
   } catch {
     return [];
   }
@@ -372,7 +372,7 @@ function parseGalleryInput(value: unknown, image: string): { ok: true; data: str
       return { ok: false, error: "One of the extra pictures is too large or not a photo." };
     }
     if (item !== image && !photos.includes(item)) photos.push(item);
-    if (photos.length === 5) break;
+    if (photos.length === 11) break;
   }
   return { ok: true, data: photos };
 }
@@ -552,9 +552,28 @@ export const saveProduct = createServerFn({ method: "POST" })
     }
 
     let slug = slugify(input.name);
-    const existing = await sql<{ name: string; team: string; blurb: string }>`select name, team, blurb from products`;
-    if (existing.some((row) => isSameKit(row, input))) {
-      return { ok: true as const, duplicate: true as const, product: null };
+    const existing = await sql<Row>`
+      select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season, gallery
+      from products
+    `;
+    const match = existing.find((row) => isSameKit(row, input));
+    if (match) {
+      const prior = parseGallery(match.gallery, match.image);
+      const photos = [...new Set([match.image, ...prior, image, ...input.gallery].filter(Boolean))].slice(0, 12);
+      const main = photos[0] ?? image;
+      const extra = photos.slice(1).filter((photo) => photo !== main);
+      await sql`
+        update products
+        set image = ${main}, gallery = ${JSON.stringify(extra)}, updated_at = now()
+        where slug = ${match.slug}
+      `;
+      await pushSharedCatalog(sql);
+      const saved = await sql<Row>`
+        select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season, gallery
+        from products
+        where slug = ${match.slug}
+      `;
+      return { ok: true as const, product: toAdmin(saved[0] ?? match) };
     }
     for (let n = 2; n < 40; n++) {
       const found = await sql<{ slug: string }>`select slug from products where slug = ${slug}`;

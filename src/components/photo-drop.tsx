@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CATEGORIES, SEASON_YEARS, categoryLabel, listPrice, seasonCode, seasonText, seasonYear, type Availability, type Category } from "@/data/catalog";
 import { collectionTitle, isCollectionLabel, isSameKit, kitTitle, looksLikeFileName, teamFromText } from "@/data/kit-identity";
 import { chartAllowsPrint, chartForCategory } from "@/data/size-charts";
-import { saveProduct, listPublicProducts } from "@/lib/catalog.functions";
+import { saveProduct } from "@/lib/catalog.functions";
 import { readKitPhoto } from "@/lib/read-kit";
 
 type Batch = {
@@ -85,6 +85,22 @@ function rankFile(file: File) {
   return 1;
 }
 
+function groupStem(filename: string) {
+  return stemOf(filename)
+    .replace(/\b(small|medium|large|mens|men's|men|jersey)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isShelfFolder(value: string) {
+  return (
+    isCollectionLabel(value) ||
+    /long sleeve|hoodie|polo|retro|track|jacket|puffer|windbreaker|beanie|banner|glove|sock|scarf|flag|boot|mlb|nfl|rugby|league|photo|image|upload|folder|kit/i.test(
+      value,
+    )
+  );
+}
+
 function groupFiles(files: File[]): Batch[] {
   const images = files.filter((file) => file.type.startsWith("image/") || /\.(jpe?g|png|webp)$/i.test(file.name));
   const groups = new Map<string, { parent: string; stem: string; files: File[] }>();
@@ -93,9 +109,10 @@ function groupFiles(files: File[]): Batch[] {
     const parts = rel.split("/").filter(Boolean);
     const filename = parts[parts.length - 1] || file.name;
     const parent = parts.length > 1 ? parts[parts.length - 2]! : "";
-    const stem = stemOf(filename);
-    const key = `${parent.toLowerCase()}/${(stem || "__angles").toLowerCase()}`;
-    const group = groups.get(key) ?? { parent, stem, files: [] };
+    const stem = groupStem(filename);
+    const oneKitFolder = Boolean(parent) && !isShelfFolder(parent) && !collectionTitle(parent);
+    const key = oneKitFolder ? `folder:${parent.toLowerCase()}` : `${parent.toLowerCase()}/${(stem || "__one").toLowerCase()}`;
+    const group = groups.get(key) ?? { parent, stem: oneKitFolder ? parent : stem, files: [] };
     group.files.push(file);
     groups.set(key, group);
   }
@@ -115,7 +132,7 @@ function groupFiles(files: File[]): Batch[] {
       colour: "",
       garment: "Short sleeve",
       season,
-      files: filesSorted.slice(0, 6),
+      files: filesSorted.slice(0, 12),
     };
   });
 }
@@ -142,14 +159,8 @@ export function PhotoDrop({
   async function nameFromPhotos(next: Batch[]) {
     setReading(true);
     const named: Batch[] = [];
-    const seen: Array<{ name: string; team: string; blurb: string }> = [];
+    let merged = 0;
     try {
-      try {
-        const live = await listPublicProducts();
-        for (const product of live.products) seen.push(product);
-      } catch {
-        // The upload still checks the rail again before it saves.
-      }
       for (let index = 0; index < next.length; index++) {
         const batch = next[index]!;
         setProgress(`Reading the team on ${index + 1} of ${next.length}`);
@@ -171,8 +182,12 @@ export function PhotoDrop({
           team,
           blurb: `Colour: ${colour}.`,
         };
-        if (seen.some((item) => isSameKit(item, candidate)) || named.some((item) => isSameKit({ name: item.name, team: item.team, blurb: `Colour: ${item.colour}.` }, candidate))) continue;
-        seen.push(candidate);
+        const twin = named.find((item) => isSameKit({ name: item.name, team: item.team, blurb: `Colour: ${item.colour}.` }, candidate));
+        if (twin) {
+          twin.files = [...twin.files, ...batch.files].slice(0, 12);
+          merged += 1;
+          continue;
+        }
         const withColour = named.some((item) => item.team === team && item.garment === garment && item.collection === batch.collection && item.colour && item.colour !== colour);
         named.push({
           ...batch,
@@ -184,10 +199,9 @@ export function PhotoDrop({
       }
       setBatches(named);
       const unread = named.filter((batch) => !batch.team).length;
-      const duplicates = next.length - named.length;
       const notes = [
         unread ? `${unread} still need a team. Type it, or they will not be listed.` : "",
-        duplicates > 0 ? `${duplicates} already on the rail, so ${duplicates === 1 ? "it was" : "they were"} not added again.` : "",
+        merged > 0 ? `${merged} extra photo ${merged === 1 ? "set was" : "sets were"} added to the same kit.` : "",
       ].filter(Boolean);
       setSkipped(notes.join(" "));
     } finally {
@@ -284,7 +298,6 @@ export function PhotoDrop({
           setProgress(`${done} added before that stop.`);
           return;
         }
-        if (result.duplicate) continue;
         done += 1;
       }
       setBatches([]);
