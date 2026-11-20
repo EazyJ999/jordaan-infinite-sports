@@ -16,6 +16,7 @@ import {
 } from "@/data/catalog";
 import { cleanPrintName, cleanPrintNumber, PRINT_BADGES } from "@/data/size-charts";
 import type { OrderLine, PrintSpec } from "@/lib/store";
+import { pushSharedCatalog } from "@/lib/shared-catalog";
 
 type ProductRow = {
   slug: string;
@@ -268,6 +269,7 @@ export const placeShopOrder = createServerFn({ method: "POST" })
       await sql`alter table shop_orders add column if not exists customer_id text not null default ''`;
       await sql`update shop_orders set customer_id = ${customerId} where id = ${row.id}`;
     }
+    if (stockTaken) await pushSharedCatalog(sql);
     return { ok: true as const, id, subtotal, shipping, total, lines: priced, delivery: delivery as Delivery };
   });
 
@@ -412,6 +414,7 @@ export const setOrderStatus = createServerFn({ method: "POST" })
        select (select count(*) from upd) as changed`,
       [id, status],
     );
+    await pushSharedCatalog(sql);
     return { ok: true as const };
   });
 
@@ -434,6 +437,7 @@ export const setStock = createServerFn({ method: "POST" })
       update products set stock = ${stock}, season = ${season}, updated_at = now() where slug = ${slug} returning slug
     `;
     if (!rows[0]) return { ok: false as const, error: "That kit is not on the rail." };
+    await pushSharedCatalog(sql);
     return { ok: true as const };
   });
 

@@ -3,6 +3,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { products as seedProducts, coarseSport, isCategory, normalizeSeason, type Availability, type Category, type Product } from "@/data/catalog";
 import type { Sql } from "@/lib/db";
 import { correctListing } from "@/data/kit-facts";
+import { pullSharedCatalog, pushSharedCatalog } from "@/lib/shared-catalog";
 import { chartAllowsPrint, chartForCategory, isSizeChart, sizesFor, type SizeChartId } from "@/data/size-charts";
 
 export type AdminProduct = Product & { hidden: boolean };
@@ -388,6 +389,7 @@ export const listPublicProducts = createServerFn({ method: "GET" }).handler(asyn
     const sql = await ready();
     await verifyCatalog(sql);
     await enforcePrices(sql);
+    await pullSharedCatalog(sql);
     const rows = await sql<Row>`
       select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season, gallery
       from products
@@ -414,6 +416,7 @@ export const listPublicProducts = createServerFn({ method: "GET" }).handler(asyn
 export const catalogVersion = createServerFn({ method: "GET" }).handler(async () => {
   try {
     const sql = await ready();
+    await pullSharedCatalog(sql);
     const stamp = await sql<{ n: number; stamp: string }>`
       select count(*)::int as n, coalesce(max(updated_at)::text, '') as stamp
       from products
@@ -456,6 +459,7 @@ export const loadDesk = createServerFn({ method: "GET" })
     if (!owner) return { state: "unclaimed" as const, products: [] as AdminProduct[] };
     if (owner !== context.userId) return { state: "taken" as const, products: [] as AdminProduct[] };
     await enforcePrices(sql);
+    await pullSharedCatalog(sql);
     const rows = await sql<Row>`
       select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season, gallery
       from products
@@ -531,6 +535,7 @@ export const saveProduct = createServerFn({ method: "POST" })
       if (!row) return { ok: false as const, error: "That kit is no longer on the rail." };
       await rememberPrice(sql, row.slug, input.price);
       await enforcePrices(sql);
+      await pushSharedCatalog(sql);
       const saved = await sql<Row>`
         select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season, gallery
         from products
@@ -579,6 +584,7 @@ export const saveProduct = createServerFn({ method: "POST" })
     if (!row) return { ok: false as const, error: "Could not add that kit." };
     await rememberPrice(sql, row.slug, input.price);
     await enforcePrices(sql);
+    await pushSharedCatalog(sql);
     const saved = await sql<Row>`
       select slug, name, team, sport, category, availability, region, kind, price, fan_price, box_price, box_fan_price, image, blurb, stock, sizes, size_chart, printable, hidden, season
       from products
@@ -599,5 +605,6 @@ export const removeProduct = createServerFn({ method: "POST" })
     }
     await sql`delete from products where slug = ${slug}`;
     await forgetPrice(sql, slug);
+    await pushSharedCatalog(sql);
     return { ok: true as const };
   });
