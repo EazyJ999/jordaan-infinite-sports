@@ -430,7 +430,29 @@ export const loadDesk = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const sql = await ready();
     const ownerRows = await sql<{ user_id: string | null }>`select user_id from shop_owner where id = 1`;
-    const owner = ownerRows[0]?.user_id ?? null;
+    let owner = ownerRows[0]?.user_id ?? null;
+    if (owner) {
+      let stillThere = true;
+      try {
+        const rows = await sql<{ id: string }>`select id from "user" where id = ${owner}`;
+        stillThere = rows.length > 0;
+      } catch {
+        stillThere = true;
+      }
+      if (!stillThere) {
+        await sql`update shop_owner set user_id = null where id = 1 and user_id = ${owner}`;
+        owner = null;
+      }
+    }
+    if (!owner) {
+      const claimed = await sql<{ user_id: string }>`
+        update shop_owner
+        set user_id = ${context.userId}
+        where id = 1 and user_id is null
+        returning user_id
+      `;
+      owner = claimed[0]?.user_id ?? null;
+    }
     if (!owner) return { state: "unclaimed" as const, products: [] as AdminProduct[] };
     if (owner !== context.userId) return { state: "taken" as const, products: [] as AdminProduct[] };
     await enforcePrices(sql);
