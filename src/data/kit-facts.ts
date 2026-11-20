@@ -2,9 +2,13 @@ import { chartForCategory, type SizeChartId } from "@/data/size-charts";
 import { seasonYear, type Category } from "@/data/catalog";
 
 const COLOURS = [
+  "black and white",
+  "light blue",
   "pinstripe",
   "cream",
   "teal",
+  "maroon",
+  "mint",
   "navy",
   "royal",
   "black",
@@ -19,10 +23,11 @@ const COLOURS = [
   "orange",
   "burgundy",
   "silver",
+  "sky",
 ];
 
 const LOCAL =
-  /springbok|bafana|proteas|kaizer|orlando pirates|mamelodi|sundowns|amazulu|chippa|stellenbosch|siwelele|sekhukhune|golden arrows|ts galaxy|durban city|polokwane|richards bay|marumo|milford|kruger united|blue bulls|stormers|cheetahs|bloemfontein|supersport united/i;
+  /springbok|bafana|south africa|proteas|kaizer|orlando pirates|mamelodi|sundowns|amazulu|chippa|stellenbosch|siwelele|sekhukhune|golden arrows|ts galaxy|durban city|polokwane|richards bay|marumo|milford|kruger united|blue bulls|stormers|cheetahs|bloemfontein|supersport united/i;
 
 const COUNTRY =
   /^(france|brazil|argentina|netherlands|germany|italy|spain|portugal|england|uruguay|mexico|japan|usa|united states|croatia|belgium|colombia|nigeria|morocco|senegal|ghana|cameroon|australia|india|wales|scotland|ireland|italy)$/i;
@@ -34,6 +39,7 @@ export function isLocalSide(team: string, name: string, category: string) {
 
 export function garmentLabel(category: string, name: string) {
   const text = `${category} ${name}`.toLowerCase();
+  if (/shorts/.test(text)) return "Shorts";
   if (category === "long-sleeves" || /long sleeve/.test(text)) return "Long sleeve";
   if (category === "windbreaker" || /windbreaker/.test(text)) return "Double sided windbreaker";
   if (category === "hoodies" || /hoodie/.test(text)) return "Hoodie";
@@ -56,6 +62,11 @@ export function garmentLabel(category: string, name: string) {
 }
 
 export function colourLabel(name: string, blurb: string) {
+  const stated = blurb.match(/Colour:\s*([^.]+)/i);
+  if (stated?.[1] && stated[1].trim().toLowerCase() !== "see photo") {
+    const clean = stated[1].trim();
+    return clean.charAt(0).toUpperCase() + clean.slice(1);
+  }
   const text = `${name} ${blurb}`.toLowerCase();
   const found = COLOURS.find((colour) => text.includes(colour));
   if (!found) return "See photo";

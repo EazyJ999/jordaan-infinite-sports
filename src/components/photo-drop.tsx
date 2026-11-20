@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { CATEGORIES, SEASON_YEARS, categoryLabel, listPrice, seasonCode, seasonText, seasonYear, type Availability, type Category } from "@/data/catalog";
+import { collectionTitle, isCollectionLabel, isSameKit, kitTitle, looksLikeFileName, teamFromText } from "@/data/kit-identity";
 import { chartAllowsPrint, chartForCategory } from "@/data/size-charts";
-import { saveProduct } from "@/lib/catalog.functions";
+import { saveProduct, listPublicProducts } from "@/lib/catalog.functions";
+import { readKitPhoto } from "@/lib/read-kit";
 
 type Batch = {
   key: string;
   name: string;
   team: string;
   season: string;
+  collection: string;
+  colour: string;
+  garment: string;
   files: File[];
 };
 
@@ -95,12 +100,23 @@ function groupFiles(files: File[]): Batch[] {
     groups.set(key, group);
   }
   return [...groups.entries()].map(([key, group]) => {
-    const raw = group.stem || group.parent || group.files[0]!.name;
-    const name = titleCase(raw).slice(0, 80) || "Kit";
-    const team = (group.parent ? titleCase(group.parent) : name).slice(0, 60);
+    const collection = collectionTitle(group.parent);
+    const fromFile = looksLikeFileName(group.stem) ? "" : teamFromText(group.stem) || titleCase(group.stem);
+    const fromFolder = collection || isCollectionLabel(group.parent) ? "" : teamFromText(group.parent) || titleCase(group.parent);
+    const team = (fromFile || fromFolder).slice(0, 60);
+    const name = (team ? kitTitle({ collection, team, colour: "", garment: "Short sleeve", withColour: false }) : "").slice(0, 80);
     const season = seasonFrom(`${group.parent} ${group.stem} ${group.files.map((file) => file.name).join(" ")}`);
     const filesSorted = [...group.files].sort((a, b) => rankFile(a) - rankFile(b) || a.name.localeCompare(b.name));
-    return { key, name, team: team.length >= 2 ? team : name.slice(0, 60), season, files: filesSorted.slice(0, 6) };
+    return {
+      key,
+      name,
+      team,
+      collection,
+      colour: "",
+      garment: "Short sleeve",
+      season,
+      files: filesSorted.slice(0, 6),
+    };
   });
 }
 
@@ -119,8 +135,66 @@ export function PhotoDrop({
   const [price, setPrice] = useState(String(listPrice("leagues") ?? 800));
   const [priceEdited, setPriceEdited] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [reading, setReading] = useState(false);
   const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
+
+  async function nameFromPhotos(next: Batch[]) {
+    setReading(true);
+    const named: Batch[] = [];
+    const seen: Array<{ name: string; team: string; blurb: string }> = [];
+    try {
+      try {
+        const live = await listPublicProducts();
+        for (const product of live.products) seen.push(product);
+      } catch {
+        // The upload still checks the rail again before it saves.
+      }
+      for (let index = 0; index < next.length; index++) {
+        const batch = next[index]!;
+        setProgress(`Reading the team on ${index + 1} of ${next.length}`);
+        let read: { team: string; colour: string; garment: string } = { team: "", colour: "", garment: "Short sleeve" };
+        try {
+          if (batch.files[0]) read = await readKitPhoto(batch.files[0]);
+        } catch {
+          read = { team: "", colour: "", garment: "Short sleeve" };
+        }
+        const team = read.team || batch.team;
+        const colour = read.colour || "See photo";
+        const garment = read.garment || "Short sleeve";
+        if (!team || looksLikeFileName(team) || isCollectionLabel(team)) {
+          named.push({ ...batch, team: "", name: "", colour, garment });
+          continue;
+        }
+        const candidate = {
+          name: kitTitle({ collection: batch.collection, team, colour, garment, withColour: true }),
+          team,
+          blurb: `Colour: ${colour}.`,
+        };
+        if (seen.some((item) => isSameKit(item, candidate)) || named.some((item) => isSameKit({ name: item.name, team: item.team, blurb: `Colour: ${item.colour}.` }, candidate))) continue;
+        seen.push(candidate);
+        const withColour = named.some((item) => item.team === team && item.garment === garment && item.collection === batch.collection && item.colour && item.colour !== colour);
+        named.push({
+          ...batch,
+          team,
+          colour,
+          garment,
+          name: kitTitle({ collection: batch.collection, team, colour, garment, withColour }),
+        });
+      }
+      setBatches(named);
+      const unread = named.filter((batch) => !batch.team).length;
+      const duplicates = next.length - named.length;
+      const notes = [
+        unread ? `${unread} still need a team. Type it, or they will not be listed.` : "",
+        duplicates > 0 ? `${duplicates} already on the rail, so ${duplicates === 1 ? "it was" : "they were"} not added again.` : "",
+      ].filter(Boolean);
+      setSkipped(notes.join(" "));
+    } finally {
+      setProgress("");
+      setReading(false);
+    }
+  }
 
   function take(list: FileList | null) {
     if (!list || list.length === 0) return;
@@ -139,10 +213,28 @@ export function PhotoDrop({
     setSkipped(grouped.length > kept.length ? `${grouped.length - kept.length} more kits were left out. Upload these, then drop the folder again.` : "");
     setError("");
     setProgress("");
+    void nameFromPhotos(kept);
   }
 
   function patch(key: string, next: Partial<Batch>) {
-    setBatches((current) => current.map((batch) => (batch.key === key ? { ...batch, ...next } : batch)));
+    setBatches((current) =>
+      current.map((batch) => {
+        if (batch.key !== key) return batch;
+        const merged = { ...batch, ...next };
+        const team = merged.team.trim();
+        if (!team || looksLikeFileName(team) || isCollectionLabel(team)) return { ...merged, name: "" };
+        return {
+          ...merged,
+          name: kitTitle({
+            collection: merged.collection,
+            team,
+            colour: merged.colour,
+            garment: merged.garment || "Short sleeve",
+            withColour: Boolean(merged.colour && merged.colour !== "Yellow" && merged.colour !== "White"),
+          }),
+        };
+      }),
+    );
   }
 
   async function upload() {
@@ -165,6 +257,7 @@ export function PhotoDrop({
         }
         const name = batch.name.trim();
         const team = batch.team.trim();
+        if (!name || !team || looksLikeFileName(name) || looksLikeFileName(team)) continue;
         const result = await saveProduct({
           data: {
             slug: "",
@@ -176,7 +269,7 @@ export function PhotoDrop({
             fanPrice: amount,
             boxPrice: null,
             boxFanPrice: null,
-            blurb: photos.length > 1 ? `${photos.length} photos of this kit.` : "",
+            blurb: `Colour: ${batch.colour || "See photo"}. Type: ${batch.garment || "Short sleeve"}.`,
             stock: availability === "on_hand" ? 1 : 0,
             image: photos[0] ?? "",
             gallery: photos.slice(1),
@@ -191,11 +284,12 @@ export function PhotoDrop({
           setProgress(`${done} added before that stop.`);
           return;
         }
+        if (result.duplicate) continue;
         done += 1;
       }
       setBatches([]);
       setSkipped("");
-      setProgress(`${done} kit${done === 1 ? "" : "s"} added. They are on the shop.`);
+      setProgress(done === 0 ? "Nothing new was added." : `${done} kit${done === 1 ? "" : "s"} added. They are on the shop.`);
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not add those pictures.");
@@ -208,7 +302,7 @@ export function PhotoDrop({
     <section className="border border-line bg-paper px-4 py-5">
       <h2 className="text-3xl uppercase">Upload a folder</h2>
       <p className="mt-2 text-sm text-muted">
-        Pick a folder from your computer. Front, back and side shots of the same shirt stay on one kit. Each picture is stamped with the logo, then listed on the shelf you choose. Empty folders are skipped.
+        Pick a folder from your computer. Each photo is named from the team on the shirt, after the folder name when that is a tournament such as World Cup 2026. A kit already on the rail is skipped. Front and back of the same shirt stay together. Empty folders are skipped.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <label className="btn btn-ink">
@@ -330,8 +424,8 @@ export function PhotoDrop({
       {progress ? <p className="mt-3 text-sm text-muted">{progress}</p> : null}
 
       {batches.length > 0 ? (
-        <button type="button" className="btn btn-primary mt-4" disabled={busy} onClick={() => void upload()}>
-          {busy ? "Adding…" : `Add ${batches.length} kit${batches.length === 1 ? "" : "s"}`}
+        <button type="button" className="btn btn-primary mt-4" disabled={busy || reading} onClick={() => void upload()}>
+          {reading ? "Reading teams…" : busy ? "Adding…" : `Add ${batches.length} kit${batches.length === 1 ? "" : "s"}`}
         </button>
       ) : null}
     </section>

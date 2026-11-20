@@ -202,6 +202,10 @@ function Desk({ name }: { name: string }) {
         setError(result.error);
         return;
       }
+      if (!result.product) {
+        setError("That kit is already on the rail.");
+        return;
+      }
       pingCatalog();
       const desk = await refresh();
       const saved = desk.products.find((item) => item.slug === result.product.slug) ?? result.product;

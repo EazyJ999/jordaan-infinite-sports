@@ -3,6 +3,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { products as seedProducts, coarseSport, isCategory, normalizeSeason, type Availability, type Category, type Product } from "@/data/catalog";
 import type { Sql } from "@/lib/db";
 import { correctListing } from "@/data/kit-facts";
+import { isCollectionLabel, isSameKit, looksLikeFileName } from "@/data/kit-identity";
 import { pullSharedCatalog, pushSharedCatalog } from "@/lib/shared-catalog";
 import { pushAccounts } from "@/lib/shared-accounts";
 import { chartAllowsPrint, chartForCategory, isSizeChart, sizesFor, type SizeChartId } from "@/data/size-charts";
@@ -505,6 +506,9 @@ export const saveProduct = createServerFn({ method: "POST" })
       price: parsed.data.price,
       fanPrice: parsed.data.price,
     };
+    if (!input.slug && (looksLikeFileName(input.name) || looksLikeFileName(input.team) || isCollectionLabel(input.team))) {
+      return { ok: false as const, error: "Type the team on the shirt. A photo file name is not a product." };
+    }
     const image = input.image || "/catalog/hero.jpg";
     if (!isSafeImage(image)) return { ok: false as const, error: "Add a picture of the kit." };
 
@@ -548,6 +552,10 @@ export const saveProduct = createServerFn({ method: "POST" })
     }
 
     let slug = slugify(input.name);
+    const existing = await sql<{ name: string; team: string; blurb: string }>`select name, team, blurb from products`;
+    if (existing.some((row) => isSameKit(row, input))) {
+      return { ok: true as const, duplicate: true as const, product: null };
+    }
     for (let n = 2; n < 40; n++) {
       const found = await sql<{ slug: string }>`select slug from products where slug = ${slug}`;
       if (found.length === 0) break;

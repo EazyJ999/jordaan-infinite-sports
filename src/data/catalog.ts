@@ -90,7 +90,8 @@ export function seasonYear(code: string): number | null {
   const match = /^(\d{2})\/(\d{2})$/.exec(code.trim());
   if (!match) return null;
   const pair = `${match[1]}/${match[2]}`;
-  return SEASON_YEARS.find((year) => seasonCode(year) === pair) ?? null;
+  const years = SEASON_YEARS.filter((year) => seasonCode(year) === pair);
+  return years.at(-1) ?? null;
 }
 
 export function seasonText(code: string) {
