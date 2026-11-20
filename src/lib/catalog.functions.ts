@@ -494,6 +494,7 @@ export const saveProduct = createServerFn({ method: "POST" })
     const fixed = correctListing(parsed.data);
     if (!isCategory(fixed.category)) return { ok: false as const, error: "Pick a category." };
     const sql = await ready();
+    await pullSharedCatalog(sql);
     const ownerRows = await sql<{ user_id: string | null }>`select user_id from shop_owner where id = 1`;
     if (ownerRows[0]?.user_id !== context.userId) {
       return { ok: false as const, error: "Only the shop owner can change the rail." };
@@ -601,6 +602,7 @@ export const removeProduct = createServerFn({ method: "POST" })
   .handler(async ({ context, data: slug }) => {
     if (!slug) return { ok: false as const, error: "Missing kit." };
     const sql = await ready();
+    await pullSharedCatalog(sql);
     const ownerRows = await sql<{ user_id: string | null }>`select user_id from shop_owner where id = 1`;
     if (ownerRows[0]?.user_id !== context.userId) {
       return { ok: false as const, error: "Only the shop owner can change the rail." };

@@ -16,7 +16,7 @@ import {
 } from "@/data/catalog";
 import { cleanPrintName, cleanPrintNumber, PRINT_BADGES } from "@/data/size-charts";
 import type { OrderLine, PrintSpec } from "@/lib/store";
-import { pushSharedCatalog } from "@/lib/shared-catalog";
+import { pushSharedCatalog, pullSharedCatalog } from "@/lib/shared-catalog";
 
 type ProductRow = {
   slug: string;
@@ -433,6 +433,7 @@ export const setStock = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Stock must be a whole number from 0 to 999." };
     }
     if (season == null) return { ok: false as const, error: "Pick a shirt year, like 26/27 or 98/99." };
+    await pullSharedCatalog(sql);
     const rows = await sql<{ slug: string }>`
       update products set stock = ${stock}, season = ${season}, updated_at = now() where slug = ${slug} returning slug
     `;
